@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const [role, setRole] = useState<'candidate' | 'recruiter' | 'admin'>('candidate');
+  const [role, setRole] = useState<'newhire' | 'recruiter' | 'admin'>('newhire');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
@@ -21,9 +21,15 @@ export default function LoginPage() {
 
     // STANDARD LOGIC (For other roles)
     if (role === 'recruiter') {
+<<<<<<< HEAD
       router.push('/recruiter/dashboard');
+=======
+      router.push('/recruiter');
+    } else if (role === 'newhire') {
+      router.push('/new-hire');
+>>>>>>> 55dfe343f7d39f40a68bfd589909fc15d983e45d
     } else {
-      router.push('/');
+      router.push('/'); // admin
     }
   };
 
@@ -36,7 +42,11 @@ export default function LoginPage() {
 
         {/* ROLE SELECTOR (Matches Header/Bot Alignment) */}
         <div className="flex flex-col gap-4 mb-10">
-          {['candidate', 'recruiter', 'admin'].map((id) => (
+          {[
+            { id: 'newhire', label: 'New Hire Portal' },
+            { id: 'recruiter', label: 'Recruiter Portal' },
+            { id: 'admin', label: 'Admin Portal' }
+          ].map(({ id, label }) => (
             <button
               key={id}
               type="button"
@@ -47,7 +57,7 @@ export default function LoginPage() {
                 : 'bg-white/5 border-white/5 text-gray-500 hover:bg-white/10'
               }`}
             >
-              {id} Portal
+              {label}
             </button>
           ))}
         </div>
