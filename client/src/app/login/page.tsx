@@ -15,13 +15,13 @@ export default function LoginPage() {
     // SPECIFIC BYPASS LOGIC
     // If credentials match 'recruiter'/'recruiter', go straight to the dashboard
     if (email === 'recruiter' && password === 'recruiter') {
-      router.push('/recruiter');
+      router.push('/recruiter/dashboard');
       return;
     }
 
     // STANDARD LOGIC (For other roles)
     if (role === 'recruiter') {
-      router.push('/recruiter');
+      router.push('/recruiter/dashboard');
     } else {
       router.push('/');
     }

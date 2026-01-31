@@ -1,68 +1,88 @@
 'use client'
-
 import Link from 'next/link';
 
-const STATS = [
-  { role: "Finance", apps: 1293 },
-  { role: "Tech", apps: 8861 },
-  { role: "Engineer", apps: 2371 },
+const JOB_DATA = [
+  { id: 'fin', role: "Finance", apps: 1293, status: "Critical", color: "border-blue-500" },
+  { id: 'tech', role: "Tech", apps: 8761, status: "Active", color: "border-cyan-400" },
+  { id: 'eng', role: "Engineer", apps: 2371, status: "Active", color: "border-indigo-500" },
 ];
 
 export default function RecruiterDashboard() {
   return (
-    <main className="min-h-screen pt-24 pb-12 px-8 flex flex-col items-center">
-      {/* 1. DASHBOARD HEADER */}
-      <h1 className="text-6xl font-serif italic text-white mb-16 tracking-wide drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
-        Recruiter Dashboard
-      </h1>
+    <main className="min-h-screen bg-[#020408] pt-24 pb-12 px-10 relative overflow-hidden">
+      {/* Background HUD Watermark */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
+        <div className="w-[900px] h-[900px] border-[1px] border-blue-500/30 rounded-full animate-pulse" />
+        <h2 className="absolute text-[12rem] font-black text-blue-900/10 uppercase tracking-tighter select-none">ARENA v4.2</h2>
+      </div>
 
-      <div className="w-full max-w-7xl flex gap-8">
+      <div className="relative z-10 max-w-7xl mx-auto flex gap-12">
         
-        {/* 2. SIDEBAR NAVIGATION (Pill Design) */}
-        <aside className="w-48 flex flex-col gap-6">
+        {/* SIDEBAR: ORIGINAL CATEGORIES */}
+        <aside className="w-48 flex flex-col gap-4">
+          <div className="mb-6 border-l-2 border-blue-500 pl-4">
+            <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.4em]">Control</p>
+            <h3 className="text-xl font-bold text-white uppercase italic">Arena</h3>
+          </div>
           {['CVs', 'EMAIL', 'Followups'].map((item) => (
-            <button 
-              key={item} 
-              className="px-6 py-4 border-2 border-blue-400/50 rounded-full text-white font-bold tracking-widest hover:bg-blue-500/20 hover:border-blue-400 transition-all text-sm uppercase"
-            >
+            <button key={item} className="w-full py-4 text-xs font-black uppercase tracking-widest border border-white/10 rounded-xl bg-white/5 hover:bg-blue-600/20 hover:border-blue-500 transition-all text-white/60 hover:text-white shadow-lg">
               {item}
             </button>
           ))}
         </aside>
 
-        {/* 3. THE DATA TABLE (Tactical Grid) */}
-        <div className="flex-1 relative">
-          {/* Background Watermark */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none select-none">
-            <h2 className="text-[12rem] font-black text-blue-800 rotate-[-5deg]">SPACE 42 ARENA</h2>
+        {/* MAIN GRID: JOB CLUSTERS */}
+        <div className="flex-1 space-y-8">
+          <header className="flex justify-between items-end border-b border-white/10 pb-6">
+            <h1 className="text-5xl font-black text-white tracking-tighter uppercase">
+              Recruiter <span className="text-blue-500">Dashboard</span>
+            </h1>
+            <div className="flex flex-col items-end font-mono text-blue-400/50 text-[10px] uppercase tracking-widest">
+              <span>Status: Online</span>
+              <span>Encrypted Session: Active</span>
+            </div>
+          </header>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {JOB_DATA.map((job) => (
+              <div key={job.id} className={`glass-card p-8 border-t-2 ${job.color} group bg-gradient-to-br from-white/[0.05] to-transparent`}>
+                <div className="flex justify-between items-start mb-6">
+                  <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest border border-blue-500/30 px-2 py-1 rounded">
+                    {job.status}
+                  </span>
+                  <div className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_10px_#60a5fa] animate-pulse" />
+                </div>
+                
+                <h3 className="text-3xl font-black text-white mb-1 uppercase tracking-tighter">{job.role}</h3>
+                <p className="text-gray-500 text-[10px] font-mono mb-10 tracking-widest">UID: {job.id.toUpperCase()}-09-ALPHA</p>
+
+                <div className="space-y-6">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-5xl font-mono text-white font-black">{job.apps.toLocaleString()}</span>
+                    <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Applications</span>
+                  </div>
+                  
+                  <Link 
+                    href="/recruiter/screening"
+                    className="block w-full text-center py-4 bg-transparent border-2 border-blue-400/60 rounded-xl text-blue-400 font-black text-xs uppercase tracking-[0.3em] hover:bg-blue-600 hover:text-white hover:border-blue-500 hover:shadow-[0_0_25px_rgba(59,130,246,0.6)] transition-all active:scale-95"
+                  >
+                    Review CVs
+                  </Link>
+                </div>
+              </div>
+            ))}
           </div>
 
-          <table className="w-full border-collapse border-2 border-white/40 backdrop-blur-sm relative z-10">
-            <thead>
-              <tr className="border-b-2 border-white/40">
-                <th className="p-8 text-2xl font-bold text-white border-r-2 border-white/40">Job Roles</th>
-                <th className="p-8 text-2xl font-bold text-white border-r-2 border-white/40 text-center">Number of Applications</th>
-                <th className="p-8 text-2xl font-bold text-white">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {STATS.map((row, index) => (
-                <tr key={index} className="border-b-2 border-white/40 last:border-b-0 hover:bg-white/5 transition-colors">
-                  <td className="p-10 text-2xl text-center text-white border-r-2 border-white/40">
-                    {row.role}
-                  </td>
-                  <td className="p-10 text-2xl text-center text-white border-r-2 border-white/40">
-                    {row.apps.toLocaleString()}
-                  </td>
-                  <td className="p-10 text-center">
-                    <button className="px-8 py-3 bg-transparent border-2 border-blue-400 rounded-xl text-white font-bold text-lg shadow-[0_0_20px_rgba(96,165,250,0.5)] hover:bg-blue-500 hover:shadow-[0_0_30px_rgba(96,165,250,0.8)] transition-all active:scale-95">
-                      View CVs
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* SYSTEM TELEMETRY */}
+          <div className="mt-12 p-5 bg-black/60 border border-white/5 rounded-2xl font-mono text-[9px] text-blue-400/30 uppercase flex items-center gap-6">
+            <div className="flex gap-2">
+              <div className="w-1 h-3 bg-blue-500/50" />
+              <div className="w-1 h-3 bg-blue-500/30" />
+              <div className="w-1 h-3 bg-blue-500/10" />
+            </div>
+            <span className="flex-1 tracking-[0.2em]">Holographic Buffer: Synchronized. Ready for AI Input.</span>
+            <span className="text-blue-500/60">0.0024ms Latency</span>
+          </div>
         </div>
       </div>
     </main>
