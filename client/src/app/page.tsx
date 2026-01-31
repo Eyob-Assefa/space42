@@ -1,99 +1,77 @@
-'use client'
+import Image from 'next/image';
+import Link from 'next/link';
 
-import { useState } from 'react'
-import Link from 'next/link'
-import ChatBot from '@/components/ChatBot'
-import SpaceButton from '@/components/SpaceButton'
+const navigationCards = [
+  {
+    title: "Explore Jobs",
+    subtitle: "COMMAND CENTER",
+    description: "Search for open roles and launch your application into orbit.",
+    image: "/assets/jobs.png",
+    link: "/jobs"
+  },
+  {
+    title: "Why Space42",
+    subtitle: "THE MISSION",
+    description: "Navigate through our core values and the future of galactic recruitment.",
+    image: "/assets/mission.jpg", 
+    link: "/why-space42"
+  },
+  {
+    title: "Life at Space42",
+    subtitle: "STATION TOUR",
+    description: "Experience our culture through an immersive virtual tour of the station.",
+    image: "/assets/tour.png",
+    link: "/tour"
+  }
+];
 
-export default function Home() {
-  const [showWhyModal, setShowWhyModal] = useState(false)
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Background Image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: 'url(/assets/space-bg.jpg)',
-          backgroundSize: 'cover',
-        }}
-      >
-        <div className="absolute inset-0 bg-black/60"></div>
+    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
+      {/* Hero Header */}
+      <div className="text-center mb-16 animate-float">
+        <h1 className="text-8xl font-black tracking-tighter text-white drop-shadow-[0_0_35px_rgba(59,130,246,0.6)]">
+          Space42
+        </h1>
+        <p className="text-blue-400 tracking-[0.6em] font-medium uppercase mt-4 text-sm">
+          Launch Your Career to New Heights
+        </p>
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
-        {/* Logo */}
-        <div className="mb-12 animate-float">
-          <h1 className="text-6xl md:text-8xl font-bold text-white mb-4 text-center">
-            Space42
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-300 text-center">
-            Launch Your Career to New Heights
-          </p>
-        </div>
+      {/* Interactive Image Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-7xl w-full">
+        {navigationCards.map((card, index) => (
+          <Link href={card.link} key={index} className="group cursor-pointer">
+            <div className="glass-card relative h-[450px] flex flex-col transition-all duration-500 hover:-translate-y-2">
+              
+              {/* Image Container (Top 2/3) */}
+              <div className="relative h-2/3 w-full overflow-hidden">
+                <Image 
+                  src={card.image} 
+                  alt={card.title} 
+                  fill 
+                  className="object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+                {/* Dark gradient to blend image into the card bottom */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0e27] via-transparent to-transparent" />
+              </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col md:flex-row gap-6 mb-12">
-          <SpaceButton onClick={() => setShowWhyModal(true)}>
-            Why Space42
-          </SpaceButton>
-          <Link href="/jobs">
-            <SpaceButton>Explore Jobs</SpaceButton>
-          </Link>
-          <Link href="/life">
-            <SpaceButton variant="secondary">Life at Space42</SpaceButton>
-          </Link>
-        </div>
-
-        {/* Why Space42 Modal */}
-        {showWhyModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-space-dark border-2 border-space-light rounded-lg max-w-2xl w-full p-8 relative">
-              <button
-                onClick={() => setShowWhyModal(false)}
-                className="absolute top-4 right-4 text-white hover:text-gray-300"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-              <h2 className="text-3xl font-bold text-white mb-6">Why Space42?</h2>
-              <div className="space-y-4 text-gray-300">
-                <div>
-                  <h3 className="text-xl font-semibold text-space-light mb-2">Our Mission</h3>
-                  <p>
-                    To revolutionize recruitment by connecting exceptional talent with groundbreaking opportunities 
-                    in the tech industry. We believe in matching the right people with the right roles, 
-                    creating success stories that reach for the stars.
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-space-light mb-2">Our Goals</h3>
-                  <p>
-                    • Streamline the hiring process with AI-powered matching<br/>
-                    • Provide transparent, fair, and efficient recruitment<br/>
-                    • Build a community of top-tier professionals and innovative companies<br/>
-                    • Reduce time-to-hire while improving candidate quality
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-space-light mb-2">Our Vision</h3>
-                  <p>
-                    To become the leading recruitment platform where technology meets human potential, 
-                    creating a future where finding the perfect job or candidate is as effortless as 
-                    looking up at the stars.
-                  </p>
-                </div>
+              {/* Content Container (Bottom 1/3) */}
+              <div className="p-8 bg-[#0a0e27]/80 backdrop-blur-sm flex-1 flex flex-col justify-center">
+                <span className="text-blue-500 text-[10px] font-bold tracking-[0.3em] mb-2 uppercase">
+                  {card.subtitle}
+                </span>
+                <h3 className="text-3xl font-bold text-white mb-3 group-hover:text-blue-400 transition-colors">
+                  {card.title}
+                </h3>
+                <p className="text-gray-400 text-sm leading-relaxed opacity-90 group-hover:opacity-100">
+                  {card.description}
+                </p>
               </div>
             </div>
-          </div>
-        )}
+          </Link>
+        ))}
       </div>
-
-      {/* Chatbot */}
-      <ChatBot />
-    </div>
-  )
+    </main>
+  );
 }
-

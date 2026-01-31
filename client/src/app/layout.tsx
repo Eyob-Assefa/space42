@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import '../styles/globals.css'
+// 1. Import the ChatBot component
+import ChatBot from '../components/ChatBot' 
 
 export const metadata: Metadata = {
   title: 'Space42 - Recruitment Platform',
@@ -13,8 +15,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="antialiased">
+        {/* The page content (your cards, satellite, etc.) */}
+        {children}
+
+        {/* 2. The ChatBot floats here, globally across all pages */}
+        <ChatBot />
+      </body>
     </html>
   )
 }
-

@@ -4,18 +4,31 @@
 
 :root {
   --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 10, 14, 39;
-  --background-end-rgb: 26, 35, 126;
+  --space-blue: 59, 130, 246;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  /* Updated to .png extension */
+  background-image: url('/assets/space-bg.png'); 
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-color: #0a0e27; 
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+@layer components {
+  /* 2. GLASS CARD STYLING */
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden transition-all duration-500;
+  }
+  
+  .glass-card:hover {
+    @apply border-blue-500/50 bg-white/10 shadow-[0_0_30px_rgba(59,130,246,0.3)];
+  }
 }
 
 @layer utilities {
@@ -24,14 +37,10 @@ body {
   }
 }
 
-/* Space theme animations */
+/* 3. SPACE THEME ANIMATIONS */
 @keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
 }
 
 .animate-float {
@@ -39,15 +48,15 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(63, 81, 181, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 40px rgba(63, 81, 181, 0.8);
-  }
+  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
+  50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.8); }
 }
 
 .pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+/* Smooth Scroll for the whole page */
+html {
+  scroll-behavior: smooth;
+}
