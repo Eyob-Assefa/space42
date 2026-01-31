@@ -1,0 +1,125 @@
+from openai import OpenAI
+import os
+from typing import List, Dict
+from dotenv import load_dotenv
+
+load_dotenv()
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+async def score_resume(cv_text: str, job_description: str, ideal_candidate: str = "") -> float:
+    """Score a resume against job description and ideal candidate description."""
+    try:
+        prompt = f"""
+        You are a recruitment AI assistant. Score this resume on a scale of 0-100 based on:
+        1. Relevance to the job description
+        2. Match with ideal candidate description
+        3. Experience and skills alignment
+        
+        Job Description: {job_description}
+        
+        Ideal Candidate Description: {ideal_candidate if ideal_candidate else "General fit"}
+        
+        Resume Text:
+        {cv_text[:3000]}  # Limit to avoid token limits
+        
+        Return ONLY a number between 0 and 100. No explanation.
+        """
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a recruitment scoring assistant. Return only numbers."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=10
+        )
+        
+        score_text = response.choices[0].message.content.strip()
+        score = float(score_text)
+        return max(0, min(100, score))  # Clamp between 0-100
+    except Exception as e:
+        print(f"Error scoring resume: {e}")
+        return 50.0  # Default score
+
+
+async def chat_with_ai(user_message: str) -> str:
+    """Handle chatbot conversations."""
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a friendly AI assistant for Space42, a space-themed recruitment platform. Be helpful, concise, and space-themed in your responses."},
+                {"role": "user", "content": user_message}
+            ],
+            temperature=0.7,
+            max_tokens=200
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error in AI chat: {e}")
+        return "I'm having trouble connecting right now. Please try again later."
+
+
+async def generate_interview_email(candidate_name: str, job_title: str) -> str:
+    """Generate an interview email template."""
+    try:
+        prompt = f"""
+        Generate a professional interview invitation email for:
+        Candidate: {candidate_name}
+        Position: {job_title}
+        
+        Keep it concise and professional.
+        """
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are an HR assistant generating professional emails."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=300
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error generating email: {e}")
+        return f"Dear {candidate_name},\n\nWe would like to invite you for an interview for the {job_title} position.\n\nBest regards,\nSpace42 Team"
+
+
+async def suggest_interview_questions(job_title: str, tech_stack: str) -> List[str]:
+    """Suggest interview questions based on job and tech stack."""
+    try:
+        prompt = f"""
+        Generate 5 relevant interview questions for:
+        Position: {job_title}
+        Tech Stack: {tech_stack}
+        
+        Return only the questions, one per line, numbered.
+        """
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are an HR assistant generating interview questions."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=300
+        )
+        
+        questions_text = response.choices[0].message.content
+        questions = [q.strip() for q in questions_text.split('\n') if q.strip() and q.strip()[0].isdigit()]
+        return questions[:5]
+    except Exception as e:
+        print(f"Error generating questions: {e}")
+        return [
+            "Tell me about yourself.",
+            "Why are you interested in this position?",
+            "What is your experience with the required technologies?",
+            "Describe a challenging project you worked on.",
+            "Where do you see yourself in 5 years?"
+        ]
+
