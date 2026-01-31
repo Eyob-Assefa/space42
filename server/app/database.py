@@ -35,6 +35,12 @@ def _get_supabase_credentials():
     supabase_url = os.getenv("SUPABASE_URL")
     supabase_key = os.getenv("SUPABASE_KEY")
     
+    # Also try alternative environment variable names
+    if not supabase_url:
+        supabase_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+    if not supabase_key:
+        supabase_key = os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
+    
     if not supabase_url or not supabase_key:
         checked_paths = ", ".join([str(p) for p in env_paths])
         raise ValueError(
@@ -42,8 +48,13 @@ def _get_supabase_credentials():
             f"Checked .env files at: {checked_paths}\n"
             f"SUPABASE_URL: {'Set' if supabase_url else 'Missing'}\n"
             f"SUPABASE_KEY: {'Set' if supabase_key else 'Missing'}\n"
-            f"Current working directory: {os.getcwd()}"
+            f"Current working directory: {os.getcwd()}\n"
+            f"Note: You can also use NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY"
         )
+    
+    # Strip whitespace from keys
+    supabase_url = supabase_url.strip()
+    supabase_key = supabase_key.strip()
     
     return supabase_url, supabase_key
 
@@ -57,6 +68,31 @@ def get_db() -> Client:
     
     if _supabase_client is None:
         supabase_url, supabase_key = _get_supabase_credentials()
-        _supabase_client = create_client(supabase_url, supabase_key)
+        
+        # Validate that the key is not empty and has proper format
+        if not supabase_key or len(supabase_key.strip()) == 0:
+            raise ValueError(
+                "SUPABASE_KEY is empty. Please check your .env file and ensure SUPABASE_KEY is set correctly."
+            )
+        
+        # Check if key looks valid (Supabase keys typically start with 'eyJ' for JWT or are long strings)
+        if len(supabase_key) < 20:
+            raise ValueError(
+                f"SUPABASE_KEY appears to be invalid (too short). Please verify your Supabase anon/service role key."
+            )
+        
+        try:
+            _supabase_client = create_client(supabase_url, supabase_key)
+        except Exception as e:
+            error_msg = str(e)
+            if "Invalid API key" in error_msg:
+                raise ValueError(
+                    f"Invalid Supabase API key. Please verify:\n"
+                    f"1. SUPABASE_URL is correct: {supabase_url[:30]}...\n"
+                    f"2. SUPABASE_KEY is the correct anon/service role key (not the JWT token)\n"
+                    f"3. Keys are set in your .env file\n"
+                    f"Original error: {error_msg}"
+                ) from e
+            raise
     
     return _supabase_client

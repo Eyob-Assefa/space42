@@ -27,11 +27,11 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: str
+    cv_url: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
-        use_enum_values = True
         use_enum_values = True
 
 

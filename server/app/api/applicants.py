@@ -69,6 +69,13 @@ async def submit_application(
     if not response.data:
         raise HTTPException(status_code=500, detail="Failed to create application")
     
+    # Update user profile with CV URL
+    try:
+        db.table("users").update({"cv_url": cv_url}).eq("id", candidate_id).execute()
+    except Exception as e:
+        print(f"Warning: Could not update user profile with CV: {e}")
+        # Don't fail the request if profile update fails
+    
     return schemas.ApplicationResponse(**response.data[0])
 
 
