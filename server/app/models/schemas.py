@@ -27,11 +27,11 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: str
+    cv_url: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
-        use_enum_values = True
         use_enum_values = True
 
 
@@ -102,4 +102,9 @@ class AIScoringRequest(BaseModel):
 
 class ChatMessage(BaseModel):
     message: str
+
+
+class ChatMatchJobsRequest(BaseModel):
+    message: str
+    cv_text: Optional[str] = None
 

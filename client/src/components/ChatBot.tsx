@@ -9,12 +9,17 @@ interface Message {
   content: string
 }
 
-export default function ChatBot() {
+interface ChatBotProps {
+  enableCvMatching?: boolean
+}
+
+export default function ChatBot({ enableCvMatching = false }: ChatBotProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: "Hello! I'm your Space42 AI assistant. How can I help you today?" }
   ])
   const [input, setInput] = useState('')
+  const [cvText, setCvText] = useState('')
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 

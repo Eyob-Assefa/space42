@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/applicants", tags=["applicants"])
 @router.post("/apply")
 async def submit_application(
     job_id: int = Form(...),
-    candidate_id: str = Form(...),
+    candidate_id: Optional[str] = Form(None),
     name: str = Form(...),
     email: str = Form(...),
     years_of_experience: int = Form(...),
@@ -21,12 +21,30 @@ async def submit_application(
     cv_file: UploadFile = File(...),
     db: Client = Depends(get_db)
 ):
-    """Submit a job application with CV upload."""
+    """Submit a job application with CV upload. Candidates can apply without signing in."""
     # Verify job exists
     job_response = db.table("jobs").select("*").eq("id", job_id).execute()
     if not job_response.data:
         raise HTTPException(status_code=404, detail="Job not found")
     job = job_response.data[0]
+    
+    # For anonymous applicants (no candidate_id), find or create a user record
+    if not candidate_id:
+        user_response = db.table("users").select("*").eq("email", email).execute()
+        if user_response.data:
+            candidate_id = user_response.data[0]["id"]
+        else:
+            candidate_id = str(uuid.uuid4())
+            try:
+                db.table("users").insert({
+                    "id": candidate_id,
+                    "email": email,
+                    "role": "candidate",
+                    "name": name
+                }).execute()
+            except Exception as e:
+                print(f"Warning: Could not create user record: {e}")
+                # Use UUID anyway - some DB setups may allow applications without user FK
     
     # Read CV file
     cv_bytes = await cv_file.read()
@@ -68,6 +86,13 @@ async def submit_application(
     response = db.table("applications").insert(application_data).execute()
     if not response.data:
         raise HTTPException(status_code=500, detail="Failed to create application")
+    
+    # Update user profile with CV URL (if user exists)
+    try:
+        db.table("users").update({"cv_url": cv_url}).eq("id", candidate_id).execute()
+    except Exception as e:
+        print(f"Warning: Could not update user profile with CV: {e}")
+        # Don't fail the request if profile update fails
     
     return schemas.ApplicationResponse(**response.data[0])
 

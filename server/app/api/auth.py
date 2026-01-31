@@ -7,30 +7,61 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 @router.post("/verify")
-async def verify_token(authorization: str = Header(None)):
-    """Verify Supabase JWT token and return user info."""
+async def verify_token(authorization: str = Header(None), db: Client = Depends(get_db)):
+    """Verify Supabase JWT token, return user info, and auto-register if needed."""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
     
     token = authorization.replace("Bearer ", "")
     
     try:
-        # Get Supabase client
-        db = get_db()
         # Verify token with Supabase
+        # Note: get_user() with a token verifies the JWT token
         user_data = db.auth.get_user(token)
-        if not user_data:
-            raise HTTPException(status_code=401, detail="Invalid token")
+        if not user_data or not user_data.user:
+            raise HTTPException(status_code=401, detail="Invalid token or user not found")
+        
+        user_id = user_data.user.id
+        email = user_data.user.email
+        
+        # Auto-register user in database if not exists
+        try:
+            user_response = db.table("users").select("*").eq("id", user_id).execute()
+            if not user_response.data:
+                # User doesn't exist, create profile
+                new_user_data = {
+                    "id": user_id,
+                    "email": email,
+                    "role": "candidate",  # Default role
+                    "name": email.split('@')[0] if email else 'User'
+                }
+                db.table("users").insert(new_user_data).execute()
+        except Exception as db_error:
+            # Log but don't fail the auth if database operation fails
+            print(f"Warning: Could not auto-register user in database: {db_error}")
         
         return {
             "user": {
-                "id": user_data.user.id,
-                "email": user_data.user.email,
+                "id": user_id,
+                "email": email,
             },
             "valid": True
         }
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Token verification failed: {str(e)}")
+        error_msg = str(e)
+        # Provide more helpful error messages
+        if "Invalid API key" in error_msg or "SupabaseException" in error_msg:
+            raise HTTPException(
+                status_code=500,
+                detail="Server configuration error: Invalid Supabase credentials. Please contact administrator."
+            )
+        raise HTTPException(
+            status_code=401,
+            detail=f"Token verification failed: {error_msg}"
+        )
 
 
 @router.post("/create-profile")
