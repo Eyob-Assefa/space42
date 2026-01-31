@@ -63,6 +63,11 @@ export default function ChatBot({ cvStatus = 'idle' }: ChatBotProps) {
       return "Ohhh, you desire to join Space42 ha?"
     }
 
+    // Logic for the New Hire Portal
+    if (pathname === '/new-hire') {
+      return "Welcome, new hire! I'm here to answer any questions about our company policies and onboarding documents. Ask me anything!"
+    }
+
     // Default Home Greeting
     return "Hi! Welcome to Space42. Click me to start our tour!"
   }
