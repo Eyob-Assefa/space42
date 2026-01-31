@@ -1,213 +1,113 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import axios from 'axios'
-import Link from 'next/link'
-import ChatBot from '@/components/ChatBot'
+import { useState } from 'react';
+import Image from 'next/image';
+import ChatBot from '@/components/ChatBot';
 
-interface Job {
-  id: number
-  title: string
-  description: string
-  requirements: string
-  created_at: string
-}
+const JOBS = [
+  { id: 1, category: "Finance & Tax", title: "Associate - Financial Accounting", match: 88, icon: "💰" },
+  { id: 2, category: "Finance & Tax", title: "Tax Manager", match: 92, icon: "📊" },
+  { id: 3, category: "Satellite Ops", title: "VP - Satellite Operations", match: 85, icon: "🛰️" },
+  { id: 4, category: "Space Engineering", title: "Manager - Spacecraft Analysis", match: 78, icon: "🔬" },
+  { id: 5, category: "Space Engineering", title: "Senior Manager - Payload Systems", match: 82, icon: "📡" },
+  { id: 6, category: "Systems Support", title: "Senior Engineer - Solutions", match: 90, icon: "💻" },
+];
 
 export default function JobsPage() {
-  const [jobs, setJobs] = useState<Job[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null)
-  const [showApplicationForm, setShowApplicationForm] = useState(false)
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    years_of_experience: 0,
-    tech_stack: '',
-  })
-  const [cvFile, setCvFile] = useState<File | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [cvStatus, setCvStatus] = useState<'idle' | 'success' | 'no_fit' | 'missing_info'>('idle');
+  const [isScanning, setIsScanning] = useState(false);
 
-  useEffect(() => {
-    fetchJobs()
-  }, [])
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const fetchJobs = async () => {
-    try {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/jobs`)
-      setJobs(response.data)
-    } catch (error) {
-      console.error('Error fetching jobs:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleJobClick = (job: Job) => {
-    setSelectedJob(job)
-    setShowApplicationForm(true)
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedJob || !cvFile) return
-
-    setSubmitting(true)
-    try {
-      const formDataToSend = new FormData()
-      formDataToSend.append('job_id', selectedJob.id.toString())
-      formDataToSend.append('name', formData.name)
-      formDataToSend.append('email', formData.email)
-      formDataToSend.append('years_of_experience', formData.years_of_experience.toString())
-      formDataToSend.append('tech_stack', formData.tech_stack)
-      formDataToSend.append('cv_file', cvFile)
-
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/applicants/apply`,
-        formDataToSend,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      )
-
-      alert('Application submitted successfully!')
-      setShowApplicationForm(false)
-      setFormData({ name: '', email: '', years_of_experience: 0, tech_stack: '' })
-      setCvFile(null)
-    } catch (error: any) {
-      console.error('Error submitting application:', error)
-      alert('Failed to submit application: ' + (error.response?.data?.detail || error.message))
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-space-dark">
-        <div className="text-white text-xl">Loading jobs...</div>
-      </div>
-    )
-  }
+    setIsScanning(true);
+    
+    // SIMULATED AI SCANNING LOGIC
+    setTimeout(() => {
+      setIsScanning(false);
+      const fileName = file.name.toLowerCase();
+      
+      if (fileName.includes('incomplete')) {
+        setCvStatus('missing_info');
+      } else if (fileName.includes('art') || fileName.includes('chef')) {
+        setCvStatus('no_fit');
+      } else {
+        setCvStatus('success');
+      }
+    }, 2500);
+  };
 
   return (
-    <div className="min-h-screen bg-space-dark p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-white">Explore Jobs</h1>
-          <Link href="/" className="text-space-light hover:text-space-blue">
-            ← Back to Home
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {jobs.map((job) => (
-            <div
-              key={job.id}
-              onClick={() => handleJobClick(job)}
-              className="bg-space-dark border-2 border-space-light rounded-lg p-6 cursor-pointer hover:border-space-blue transition-colors"
+    <main className="min-h-screen pt-28 pb-12 px-10 max-w-[1600px] mx-auto">
+      <div className="flex flex-col lg:flex-row gap-10">
+        
+        {/* LEFT SIDE: THE JOB GRID (6 BARS) */}
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
+          {JOBS.map((job) => (
+            <div 
+              key={job.id} 
+              className={`glass-card p-6 flex items-center justify-between transition-all duration-500 border-white/10 ${
+                cvStatus === 'success' && job.match > 85 ? 'border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'opacity-80'
+              }`}
             >
-              <h2 className="text-2xl font-bold text-white mb-3">{job.title}</h2>
-              <p className="text-gray-300 mb-4 line-clamp-3">
-                {job.description || 'No description available'}
-              </p>
-              <button className="text-space-light hover:text-space-blue font-semibold">
-                Apply Now →
-              </button>
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-blue-500/10 flex items-center justify-center text-2xl border border-blue-500/20">
+                  {job.icon}
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-blue-400 tracking-widest uppercase mb-1">{job.category}</p>
+                  <h3 className="text-lg font-bold text-white leading-tight">{job.title}</h3>
+                </div>
+              </div>
+              
+              {/* Match Percentage Circle */}
+              <div className="flex flex-col items-center">
+                <div className="relative w-12 h-12 flex items-center justify-center border-2 border-blue-500/30 rounded-full">
+                  <span className="text-[10px] font-bold">{job.match}%</span>
+                </div>
+                <span className="text-[8px] uppercase mt-1 tracking-tighter opacity-60">Match</span>
+              </div>
             </div>
           ))}
         </div>
 
-        {jobs.length === 0 && (
-          <div className="text-center text-gray-400 py-12">
-            <p>No jobs available at the moment.</p>
+        {/* RIGHT SIDE: THE UPLOAD ZONE */}
+        <div className="w-full lg:w-[400px] space-y-6">
+          <div className={`glass-card p-10 border-2 border-dashed transition-all duration-500 flex flex-col items-center text-center ${
+            isScanning ? 'border-blue-500 bg-blue-500/5' : 'border-white/20'
+          }`}>
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 transition-transform duration-700 ${isScanning ? 'animate-spin bg-blue-500' : 'bg-white/5'}`}>
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            </div>
+            
+            <h2 className="text-2xl font-black tracking-tighter mb-2">Initialize Recruitment Scan</h2>
+            <p className="text-sm text-gray-400 mb-8 leading-relaxed">
+              Drop your CV here. Our AI will analyze your trajectory and match you with the perfect role...
+            </p>
+
+            <input type="file" id="cv-input" className="hidden" onChange={handleFileUpload} />
+            <label 
+              htmlFor="cv-input" 
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl cursor-pointer transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] block"
+            >
+              {isScanning ? 'SCANNING ENCRYPTED DATA...' : 'UPLOAD CV'}
+            </label>
           </div>
-        )}
+
+          {/* Feedback Area for Results */}
+          {cvStatus === 'missing_info' && (
+            <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-200 text-xs font-bold animate-pulse">
+              ⚠️ CRITICAL: Identity or contact markers missing from file.
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Application Form Modal */}
-      {showApplicationForm && selectedJob && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-space-dark border-2 border-space-light rounded-lg max-w-2xl w-full p-8">
-            <h2 className="text-3xl font-bold text-white mb-6">Apply for {selectedJob.title}</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-gray-300 mb-2">Name</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  className="w-full bg-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-space-light"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-300 mb-2">Email</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                  className="w-full bg-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-space-light"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-300 mb-2">Years of Experience</label>
-                <input
-                  type="number"
-                  value={formData.years_of_experience}
-                  onChange={(e) => setFormData({ ...formData, years_of_experience: parseInt(e.target.value) })}
-                  required
-                  min="0"
-                  className="w-full bg-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-space-light"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-300 mb-2">Tech Stack</label>
-                <input
-                  type="text"
-                  value={formData.tech_stack}
-                  onChange={(e) => setFormData({ ...formData, tech_stack: e.target.value })}
-                  required
-                  placeholder="e.g., React, Python, Node.js"
-                  className="w-full bg-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-space-light"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-300 mb-2">Upload CV (PDF)</label>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => setCvFile(e.target.files?.[0] || null)}
-                  required
-                  className="w-full bg-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-space-light"
-                />
-              </div>
-              <div className="flex space-x-4 pt-4">
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 bg-space-light hover:bg-space-blue text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                >
-                  {submitting ? 'Submitting...' : 'Submit Application'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowApplicationForm(false)}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg font-semibold transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ChatBot for CV-based job matching */}
-      <ChatBot enableCvMatching />
-    </div>
-  )
+      {/* Passing the Status to the Global ChatBot */}
+      <ChatBot cvStatus={cvStatus} />
+    </main>
+  );
 }
-

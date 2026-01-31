@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import axios from 'axios'
 import Image from 'next/image'
 
@@ -9,19 +10,62 @@ interface Message {
   content: string
 }
 
+// Added status types for the Jobs page logic
 interface ChatBotProps {
-  enableCvMatching?: boolean
+  cvStatus?: 'idle' | 'uploading' | 'success' | 'no_fit' | 'missing_info'
 }
 
-export default function ChatBot({ enableCvMatching = false }: ChatBotProps) {
+export default function ChatBot({ cvStatus = 'idle' }: ChatBotProps) {
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
+  const [isAtBottom, setIsAtBottom] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: "Hello! I'm your Space42 AI assistant. How can I help you today?" }
   ])
   const [input, setInput] = useState('')
-  const [cvText, setCvText] = useState('')
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollHeight = document.documentElement.scrollHeight
+      const scrollPos = window.innerHeight + window.scrollY
+      if (scrollPos / scrollHeight > 0.75) {
+        setIsAtBottom(true)
+      } else {
+        setIsAtBottom(false)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // 2. NEW DYNAMIC GREETING LOGIC
+  const getGreeting = () => {
+    // Logic for the Opportunities/Jobs Page
+    if (pathname === '/jobs') {
+      switch (cvStatus) {
+        case 'missing_info':
+          return "Oh! It seems your CV is incomplete, why don't you give it one last review."
+        case 'no_fit':
+          return "Ooops! it seems maybe you're an odd ball! I can't seem to find roles best fit for you."
+        case 'success':
+          return "These are the most fitting job roles I found for you."
+        default:
+          return "Oh, you want to work at Space42? Nice Choice! Upload your CV and I will get you best fitted job roles for you!"
+      }
+    }
+
+    // Logic for the Why Space42 Page
+    if (pathname === '/why-space42') {
+      if (isAtBottom) return "Feeling curious? Pick a destination and let's go deeper!"
+      return "Ohhh, you desire to join Space42 ha?"
+    }
+
+    // Default Home Greeting
+    return "Hi! Welcome to Space42. Click me to start our tour!"
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -54,17 +98,15 @@ export default function ChatBot({ enableCvMatching = false }: ChatBotProps) {
     <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
       
       {!isOpen ? (
-        /* MODE 1: THE BOT ICON & GREETING */
         <div className="flex flex-col items-end gap-4">
-          <div className="bg-white text-gray-800 p-5 rounded-2xl shadow-2xl border-2 border-blue-500 max-w-[240px] animate-bounce relative">
-            <p className="text-xs font-black text-blue-600 uppercase mb-1">Mission Control</p>
-            <p className="text-sm font-medium leading-tight">
-              Hi! Welcome to Space42. Click me to start our tour!
+          <div className="bg-white text-gray-800 p-8 rounded-[2rem] shadow-[0_0_50px_rgba(255,255,255,0.2)] border-2 border-blue-500 max-w-[340px] animate-bounce relative">
+            <p className="text-sm font-black text-blue-600 uppercase mb-2 tracking-widest">Mission Control</p>
+            <p className="text-xl font-bold leading-tight tracking-tight text-gray-900">
+              {getGreeting()}
             </p>
-            <div className="absolute -bottom-2 right-12 w-4 h-4 bg-white border-r-2 border-b-2 border-blue-500 rotate-45"></div>
+            <div className="absolute -bottom-2 right-12 w-6 h-6 bg-white border-r-2 border-b-2 border-blue-500 rotate-45"></div>
           </div>
 
-          {/* LARGE 128px TRANSPARENT ICON */}
           <button
             onClick={() => setIsOpen(true)}
             className="w-32 h-32 rounded-full transition-all duration-300 hover:scale-110 active:scale-95 bg-transparent overflow-hidden"
@@ -79,10 +121,8 @@ export default function ChatBot({ enableCvMatching = false }: ChatBotProps) {
           </button>
         </div>
       ) : (
-        /* MODE 2: THE CONVERSATION BOX (New Design + Functionality) */
         <div className="w-96 h-[550px] bg-gray-900/90 backdrop-blur-2xl border-2 border-blue-500/50 rounded-3xl shadow-[0_0_50px_rgba(59,130,246,0.4)] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-300 origin-bottom-right">
           
-          {/* Header */}
           <div className="bg-blue-600/80 p-5 flex justify-between items-center border-b border-white/10">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full border-2 border-white/30 overflow-hidden bg-gray-800">
@@ -100,7 +140,6 @@ export default function ChatBot({ enableCvMatching = false }: ChatBotProps) {
             </button>
           </div>
 
-          {/* Chat Messages Area */}
           <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-[url('/assets/grid-pattern.svg')] bg-repeat bg-center">
             {messages.map((msg, idx) => (
               <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -121,7 +160,6 @@ export default function ChatBot({ enableCvMatching = false }: ChatBotProps) {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Chat Input Area */}
           <div className="p-5 bg-gray-900/50 border-t border-white/10 backdrop-blur-md">
             <div className="flex gap-2 bg-gray-800/80 rounded-2xl p-1.5 border border-white/5 focus-within:border-blue-500/50 transition-all">
               <input
