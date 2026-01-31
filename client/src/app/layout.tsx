@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import '../styles/globals.css'
+import Header from '@/components/Header'
 
 export const metadata: Metadata = {
   title: 'Space42 - Recruitment Platform',
@@ -13,7 +14,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Header />
+        <main className="pt-16">{children}</main>
+      </body>
     </html>
   )
 }

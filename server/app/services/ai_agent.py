@@ -45,6 +45,43 @@ async def score_resume(cv_text: str, job_description: str, ideal_candidate: str 
         return 50.0  # Default score
 
 
+async def match_jobs_with_cv(cv_text: str, jobs_list: List[Dict]) -> str:
+    """Match a candidate's CV to available jobs using AI."""
+    try:
+        jobs_summary = "\n\n".join([
+            f"Job ID: {j.get('id')}\nTitle: {j.get('title')}\nDescription: {j.get('description', '')[:500]}"
+            for j in jobs_list
+        ])
+        
+        prompt = f"""
+        You are a recruitment AI assistant for Space42. Based on the candidate's CV/resume, recommend which jobs are the best match.
+        
+        Available Jobs:
+        {jobs_summary}
+        
+        Candidate's CV/Resume:
+        {cv_text[:4000]}
+        
+        For each job that matches well, explain why it's a good fit. Rank the top 3-5 matches.
+        If no jobs match well, say so and suggest what skills they might develop.
+        Be helpful and encouraging.
+        """
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful recruitment assistant matching candidates to jobs."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.6,
+            max_tokens=500
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error matching jobs: {e}")
+        return "I'm having trouble analyzing your CV right now. Please try again later."
+
+
 async def chat_with_ai(user_message: str) -> str:
     """Handle chatbot conversations."""
     try:

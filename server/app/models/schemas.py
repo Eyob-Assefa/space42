@@ -103,3 +103,8 @@ class AIScoringRequest(BaseModel):
 class ChatMessage(BaseModel):
     message: str
 
+
+class ChatMatchJobsRequest(BaseModel):
+    message: str
+    cv_text: Optional[str] = None
+

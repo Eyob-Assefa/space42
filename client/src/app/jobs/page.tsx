@@ -1,10 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import axios from 'axios'
-import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import ChatBot from '@/components/ChatBot'
 
 interface Job {
   id: number
@@ -27,19 +26,10 @@ export default function JobsPage() {
   })
   const [cvFile, setCvFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const router = useRouter()
 
   useEffect(() => {
-    checkAuth()
     fetchJobs()
   }, [])
-
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      router.push('/login')
-    }
-  }
 
   const fetchJobs = async () => {
     try {
@@ -63,15 +53,8 @@ export default function JobsPage() {
 
     setSubmitting(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        router.push('/login')
-        return
-      }
-
       const formDataToSend = new FormData()
       formDataToSend.append('job_id', selectedJob.id.toString())
-      formDataToSend.append('candidate_id', session.user.id)
       formDataToSend.append('name', formData.name)
       formDataToSend.append('email', formData.email)
       formDataToSend.append('years_of_experience', formData.years_of_experience.toString())
@@ -221,6 +204,9 @@ export default function JobsPage() {
           </div>
         </div>
       )}
+
+      {/* ChatBot for CV-based job matching */}
+      <ChatBot enableCvMatching />
     </div>
   )
 }

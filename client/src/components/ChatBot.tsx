@@ -8,12 +8,19 @@ interface Message {
   content: string
 }
 
-export default function ChatBot() {
+interface ChatBotProps {
+  enableCvMatching?: boolean
+}
+
+export default function ChatBot({ enableCvMatching = false }: ChatBotProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Hello! I\'m your Space42 AI assistant. How can I help you today?' }
+    { role: 'assistant', content: enableCvMatching 
+      ? 'Hello! I\'m your Space42 AI assistant. Paste your CV or key skills below and I\'ll match you with the best jobs!' 
+      : 'Hello! I\'m your Space42 AI assistant. How can I help you today?' }
   ])
   const [input, setInput] = useState('')
+  const [cvText, setCvText] = useState('')
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -34,9 +41,15 @@ export default function ChatBot() {
     setLoading(true)
 
     try {
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/chat/`, {
-        message: input
-      })
+      const endpoint = enableCvMatching && cvText.trim() 
+        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/chat/match-jobs`
+        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/chat/`
+      
+      const payload = enableCvMatching && cvText.trim()
+        ? { message: input, cv_text: cvText }
+        : { message: input }
+      
+      const response = await axios.post(endpoint, payload)
       
       setMessages(prev => [...prev, { role: 'assistant', content: response.data.response }])
     } catch (error) {
@@ -111,14 +124,24 @@ export default function ChatBot() {
           </div>
 
           {/* Input */}
-          <div className="p-4 border-t border-gray-700">
+          <div className="p-4 border-t border-gray-700 space-y-3">
+            {enableCvMatching && (
+              <textarea
+                value={cvText}
+                onChange={(e) => setCvText(e.target.value)}
+                placeholder="Paste your CV text or key skills here for job matching..."
+                rows={3}
+                className="w-full bg-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-space-light resize-none text-sm"
+                disabled={loading}
+              />
+            )}
             <div className="flex space-x-2">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Type your message..."
+                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                placeholder={enableCvMatching ? "e.g., Which jobs match my CV?" : "Type your message..."}
                 className="flex-1 bg-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-space-light"
                 disabled={loading}
               />
