@@ -5,35 +5,30 @@ import { usePathname } from 'next/navigation'
 
 export default function Header() {
   const pathname = usePathname()
-  const isLoginPage = pathname === '/login'
-  const isSignupPage = pathname === '/signup'
+  
+  // Hide header on login/recruiter pages as discussed
+  if (pathname === '/login' || pathname === '/recruiter') return null;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 bg-space-dark/95 backdrop-blur-sm border-b border-space-light/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Link href="/" className="text-xl font-bold text-white hover:text-space-light transition-colors">
-            Space42
-          </Link>
-          <div className="flex items-center gap-3">
-            {!isSignupPage && (
-              <Link
-                href="/signup"
-                className="px-4 py-2 border border-space-light hover:bg-space-light/10 text-space-light font-semibold rounded-lg transition-colors"
-              >
-                Candidate Sign-Up
-              </Link>
-            )}
-            {!isLoginPage && (
-              <Link
-                href="/login"
-                className="px-4 py-2 bg-space-light hover:bg-space-blue text-white font-semibold rounded-lg transition-colors"
-              >
-                Recruiter Sign-In
-              </Link>
-            )}
-          </div>
-        </div>
+    <header className="fixed top-0 left-0 right-0 z-[999] pointer-events-none">
+      {/* We use px-6 to match the standard gutter of the robot at the bottom */}
+      <div className="flex justify-between items-start p-6">
+        
+        {/* LOGO - Top Left */}
+        <Link href="/" className="pointer-events-auto text-2xl font-black text-white tracking-tighter">
+          SPACE<span className="text-blue-500">42</span>
+        </Link>
+
+        {/* THE HAMBURGER MENU - Fixed Top Right */}
+        <Link
+          href="/login"
+          className="pointer-events-auto flex flex-col gap-1.5 p-4 rounded-xl border-2 border-white/10 hover:border-blue-500/50 transition-all bg-black/40 backdrop-blur-md shadow-2xl"
+        >
+          {/* Tactical bars with consistent right-alignment */}
+          <div className="w-8 h-1 bg-white rounded-full"></div>
+          <div className="w-5 h-1 bg-white rounded-full ml-auto"></div>
+          <div className="w-8 h-1 bg-white rounded-full"></div>
+        </Link>
       </div>
     </header>
   )

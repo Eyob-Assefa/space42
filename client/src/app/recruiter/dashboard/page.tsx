@@ -1,133 +1,70 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import axios from 'axios'
-import { supabase } from '@/lib/supabase'
+import Link from 'next/link';
 
-interface Job {
-  id: number
-  title: string
-  description: string
-  applicant_count?: number
-}
+const STATS = [
+  { role: "Finance", apps: 1293 },
+  { role: "Tech", apps: 8861 },
+  { role: "Engineer", apps: 2371 },
+];
 
 export default function RecruiterDashboard() {
-  const [jobs, setJobs] = useState<Job[]>([])
-  const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
-  const router = useRouter()
-
-  useEffect(() => {
-    checkAuth()
-    fetchJobs()
-  }, [])
-
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      router.push('/login')
-      return
-    }
-    setUser(session.user)
-
-    // Verify user is recruiter
-    try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/verify`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      )
-    } catch (error) {
-      console.error('Auth verification failed:', error)
-    }
-  }
-
-  const fetchJobs = async () => {
-    try {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/jobs`)
-      const jobsData = response.data
-
-      // Fetch applicant counts for each job
-      const jobsWithCounts = await Promise.all(
-        jobsData.map(async (job: Job) => {
-          try {
-            const applicantsResponse = await axios.get(
-              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/jobs/${job.id}/applicants`
-            )
-            return {
-              ...job,
-              applicant_count: applicantsResponse.data.applicant_count || 0,
-            }
-          } catch (error) {
-            return { ...job, applicant_count: 0 }
-          }
-        })
-      )
-
-      setJobs(jobsWithCounts)
-    } catch (error) {
-      console.error('Error fetching jobs:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-space-dark">
-        <div className="text-white text-xl">Loading dashboard...</div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-space-dark p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Recruiter Dashboard</h1>
-            {user && (
-              <p className="text-gray-400">Welcome, {user.email}</p>
-            )}
-          </div>
-          <Link href="/" className="text-space-light hover:text-space-blue">
-            ← Back to Home
-          </Link>
-        </div>
+    <main className="min-h-screen pt-24 pb-12 px-8 flex flex-col items-center">
+      {/* 1. DASHBOARD HEADER */}
+      <h1 className="text-6xl font-serif italic text-white mb-16 tracking-wide drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
+        Recruiter Dashboard
+      </h1>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {jobs.map((job) => (
-            <Link
-              key={job.id}
-              href={`/recruiter/screening/${job.id}`}
-              className="bg-space-dark border-2 border-space-light rounded-lg p-6 hover:border-space-blue transition-colors"
+      <div className="w-full max-w-7xl flex gap-8">
+        
+        {/* 2. SIDEBAR NAVIGATION (Pill Design) */}
+        <aside className="w-48 flex flex-col gap-6">
+          {['CVs', 'EMAIL', 'Followups'].map((item) => (
+            <button 
+              key={item} 
+              className="px-6 py-4 border-2 border-blue-400/50 rounded-full text-white font-bold tracking-widest hover:bg-blue-500/20 hover:border-blue-400 transition-all text-sm uppercase"
             >
-              <h2 className="text-2xl font-bold text-white mb-3">{job.title}</h2>
-              <p className="text-gray-300 mb-4 line-clamp-2">
-                {job.description || 'No description available'}
-              </p>
-              <div className="flex justify-between items-center">
-                <span className="text-space-light font-semibold">
-                  {job.applicant_count || 0} Applicants
-                </span>
-                <span className="text-gray-400">View →</span>
-              </div>
-            </Link>
+              {item}
+            </button>
           ))}
-        </div>
+        </aside>
 
-        {jobs.length === 0 && (
-          <div className="text-center text-gray-400 py-12">
-            <p>No job postings yet. Create your first job to get started!</p>
+        {/* 3. THE DATA TABLE (Tactical Grid) */}
+        <div className="flex-1 relative">
+          {/* Background Watermark */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none select-none">
+            <h2 className="text-[12rem] font-black text-blue-800 rotate-[-5deg]">SPACE 42 ARENA</h2>
           </div>
-        )}
-      </div>
-    </div>
-  )
-}
 
+          <table className="w-full border-collapse border-2 border-white/40 backdrop-blur-sm relative z-10">
+            <thead>
+              <tr className="border-b-2 border-white/40">
+                <th className="p-8 text-2xl font-bold text-white border-r-2 border-white/40">Job Roles</th>
+                <th className="p-8 text-2xl font-bold text-white border-r-2 border-white/40 text-center">Number of Applications</th>
+                <th className="p-8 text-2xl font-bold text-white">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {STATS.map((row, index) => (
+                <tr key={index} className="border-b-2 border-white/40 last:border-b-0 hover:bg-white/5 transition-colors">
+                  <td className="p-10 text-2xl text-center text-white border-r-2 border-white/40">
+                    {row.role}
+                  </td>
+                  <td className="p-10 text-2xl text-center text-white border-r-2 border-white/40">
+                    {row.apps.toLocaleString()}
+                  </td>
+                  <td className="p-10 text-center">
+                    <button className="px-8 py-3 bg-transparent border-2 border-blue-400 rounded-xl text-white font-bold text-lg shadow-[0_0_20px_rgba(96,165,250,0.5)] hover:bg-blue-500 hover:shadow-[0_0_30px_rgba(96,165,250,0.8)] transition-all active:scale-95">
+                      View CVs
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  );
+}

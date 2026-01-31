@@ -1,121 +1,83 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
-import axios from 'axios'
-import Link from 'next/link'
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
-export default function RecruiterLoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const router = useRouter()
+export default function LoginPage() {
+  const [role, setRole] = useState<'candidate' | 'recruiter' | 'admin'>('candidate');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const router = useRouter();
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        router.push('/recruiter/dashboard')
-      }
-    })
-  }, [router])
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (authError) {
-        if (authError.message.includes('Invalid login')) {
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-          })
-
-          if (signUpError) throw signUpError
-
-          if (signUpData.user) {
-            await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/create-profile`, {
-              id: signUpData.user.id,
-              email: signUpData.user.email,
-              role: 'recruiter',
-              name: email.split('@')[0],
-            })
-          }
-        } else {
-          throw authError
-        }
-      }
-
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (session) {
-        router.push('/recruiter/dashboard')
-      }
-    } catch (err: any) {
-      setError(err.message || 'Login failed')
-    } finally {
-      setLoading(false)
+    // SPECIFIC BYPASS LOGIC
+    // If credentials match 'recruiter'/'recruiter', go straight to the dashboard
+    if (email === 'recruiter' && password === 'recruiter') {
+      router.push('/recruiter');
+      return;
     }
-  }
+
+    // STANDARD LOGIC (For other roles)
+    if (role === 'recruiter') {
+      router.push('/recruiter');
+    } else {
+      router.push('/');
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-space-dark px-4">
-      <div className="bg-space-dark border-2 border-space-light rounded-lg p-8 max-w-md w-full">
-        <h1 className="text-4xl font-bold text-white mb-2 text-center">Recruiter Sign-In</h1>
-        <p className="text-gray-400 text-center mb-8">Space42</p>
-        
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div>
-            <label className="block text-gray-300 mb-2">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full bg-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-space-light"
-            />
-          </div>
+    <main className="min-h-screen flex items-center justify-center bg-black relative">
+      <div className="z-50 w-full max-w-md p-10 bg-gray-900/80 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] shadow-2xl">
+        <h2 className="text-4xl font-black text-center mb-10 tracking-tighter text-white uppercase">
+          MISSION <span className="text-blue-500">ACCESS</span>
+        </h2>
 
-          <div>
-            <label className="block text-gray-300 mb-2">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full bg-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-space-light"
-            />
-          </div>
+        {/* ROLE SELECTOR (Matches Header/Bot Alignment) */}
+        <div className="flex flex-col gap-4 mb-10">
+          {['candidate', 'recruiter', 'admin'].map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setRole(id as any)}
+              className={`w-full py-5 rounded-2xl font-black transition-all border-2 text-xs uppercase tracking-[0.2em] ${
+                role === id 
+                ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_30px_rgba(59,130,246,0.5)]' 
+                : 'bg-white/5 border-white/5 text-gray-500 hover:bg-white/10'
+              }`}
+            >
+              {id} Portal
+            </button>
+          ))}
+        </div>
 
-          {error && (
-            <div className="bg-red-900/50 border border-red-500 rounded-lg p-3 text-red-200">
-              {error}
-            </div>
-          )}
-
-          <button
+        {/* LOGIN FORM */}
+        <form className="space-y-4" onSubmit={handleLogin}>
+          <input 
+            type="text" // Changed to text to allow 'recruiter' string easily
+            placeholder="IDENTITY EMAIL / USERNAME" 
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full bg-black/40 border border-white/10 p-5 rounded-2xl text-white text-sm outline-none focus:border-blue-500"
+            required
+          />
+          <input 
+            type="password" 
+            placeholder="SECURITY KEY" 
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full bg-black/40 border border-white/10 p-5 rounded-2xl text-white text-sm outline-none focus:border-blue-500"
+            required
+          />
+          <button 
             type="submit"
-            disabled={loading}
-            className="w-full bg-space-light hover:bg-space-blue text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50"
+            className="w-full bg-blue-500 hover:bg-blue-400 text-white font-black py-5 rounded-2xl transition-all active:scale-95 shadow-lg mt-4 uppercase tracking-widest"
           >
-            {loading ? 'Loading...' : 'Sign In'}
+            Authenticate
           </button>
         </form>
-
-        <div className="mt-6 text-center">
-          <Link href="/" className="text-space-light hover:text-space-blue">
-            ← Back to Home
-          </Link>
-        </div>
       </div>
-    </div>
-  )
+    </main>
+  );
 }
