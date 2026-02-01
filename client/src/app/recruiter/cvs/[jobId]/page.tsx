@@ -18,10 +18,27 @@ interface Application {
 }
 
 const MOCK_APPLICATIONS: Application[] = [
-  { id: 1, name: 'Sefan Garomssa', email: 'sef@example.com', years_of_experience: 8, tech_stack: 'Next.js, Python, AI', cv_url: '/documents/JSC_Welcome_Kit.pdf', ai_score: 98, status: 'applied' },
-  { id: 2, name: 'Sarah Connor', email: 'sarah@example.com', years_of_experience: 6, tech_stack: 'Cyber, Rust, C++', cv_url: '/documents/JSC_Welcome_Kit.pdf', ai_score: 92, status: 'applied' },
-  { id: 3, name: 'James Holden', email: 'james@example.com', years_of_experience: 5, tech_stack: 'Go, K8s, Docker', cv_url: '/documents/JSC_Welcome_Kit.pdf', ai_score: 88, status: 'applied' },
-]
+  { id: 1, name: 'Mariam Mansouri', email: 'mariam@example.com', years_of_experience: 8, tech_stack: 'Next.js, Python, AI', cv_url: '/documents/mock-cv1.pdf', ai_score: 98, status: 'applied' },
+  { id: 2, name: 'Sarah Connor', email: 'sarah@example.com', years_of_experience: 6, tech_stack: 'Cyber, Rust, C++', cv_url: '/documents/mock-cv2.pdf', ai_score: 92, status: 'applied' },
+  { id: 3, name: 'James Holden', email: 'james@example.com', years_of_experience: 5, tech_stack: 'Go, K8s, Docker', cv_url: '/documents/mock-cv3.pdf', ai_score: 88, status: 'applied' },
+  { id: 4, name: 'Amos Burton', email: 'amos@example.com', years_of_experience: 12, tech_stack: 'C, Linux, Embedded', cv_url: '/documents/mock-cv1.pdf', ai_score: 95, status: 'applied' },
+  { id: 5, name: 'Chrisjen Avasarala', email: 'chris@example.com', years_of_experience: 20, tech_stack: 'Leadership, Strategy, Polished', cv_url: '/documents/mock-cv2.pdf', ai_score: 84, status: 'applied' },
+  { id: 6, name: 'Bobbie Draper', email: 'bobbie@example.com', years_of_experience: 7, tech_stack: 'Python, Django, AWS', cv_url: '/documents/mock-cv3.pdf', ai_score: 91, status: 'applied' },
+  { id: 7, name: 'Arthur Dent', email: 'arthur@example.com', years_of_experience: 2, tech_stack: 'React, Tailwind, Node', cv_url: '/documents/mock-cv1.pdf', ai_score: 72, status: 'applied' },
+  { id: 8, name: 'Ford Prefect', email: 'ford@example.com', years_of_experience: 15, tech_stack: 'Ruby, Rails, Postgres', cv_url: '/documents/mock-cv2.pdf', ai_score: 89, status: 'applied' },
+  { id: 9, name: 'Tricia McMillan', email: 'tricia@example.com', years_of_experience: 4, tech_stack: 'Vue, Firebase, GCP', cv_url: '/documents/mock-cv3.pdf', ai_score: 86, status: 'applied' },
+  { id: 10, name: 'Zaphod Beeblebrox', email: 'zaphod@example.com', years_of_experience: 10, tech_stack: 'PHP, Laravel, MySQL', cv_url: '/documents/mock-cv3.pdf', ai_score: 78, status: 'applied' },
+  { id: 11, name: 'Elaine Marley', email: 'elaine@example.com', years_of_experience: 9, tech_stack: 'Java, Spring Boot, Oracle', cv_url: '/documents/mock-cv1.pdf', ai_score: 93, status: 'applied' },
+  { id: 12, name: 'Guybrush Threepwood', email: 'guybrush@example.com', years_of_experience: 3, tech_stack: 'Swift, SwiftUI, iOS', cv_url: '/documents/mock-cv2.pdf', ai_score: 81, status: 'applied' },
+  { id: 13, name: 'Stan S. Stanman', email: 'stan@example.com', years_of_experience: 11, tech_stack: 'Salesforce, CRM, Apex', cv_url: '/documents/mock-cv3.pdf', ai_score: 75, status: 'applied' },
+  { id: 14, name: 'Lara Croft', email: 'lara@example.com', years_of_experience: 8, tech_stack: 'Kotlin, Android, Coroutines', cv_url: '/documents/mock-cv1.pdf', ai_score: 94, status: 'applied' },
+  { id: 15, name: 'Nathan Drake', email: 'nathan@example.com', years_of_experience: 6, tech_stack: 'Flutter, Dart, GraphQL', cv_url: '/documents/mock-cv2.pdf', ai_score: 87, status: 'applied' },
+  { id: 16, name: 'Jill Valentine', email: 'jill@example.com', years_of_experience: 5, tech_stack: 'C#, .NET, Azure', cv_url: '/documents/mock-cv3.pdf', ai_score: 90, status: 'applied' },
+  { id: 17, name: 'Leon Kennedy', email: 'leon@example.com', years_of_experience: 4, tech_stack: 'Angular, RxJS, SASS', cv_url: '/documents/mock-cv1.pdf', ai_score: 83, status: 'applied' },
+  { id: 18, name: 'Ada Wong', email: 'ada@example.com', years_of_experience: 9, tech_stack: 'Svelte, Vite, Vercel', cv_url: '/documents/mock-cv2.pdf', ai_score: 96, status: 'applied' },
+  { id: 19, name: 'Joel Miller', email: 'joel@example.com', years_of_experience: 14, tech_stack: 'Python, Flask, PyTorch', cv_url: '/documents/mock-cv3.pdf', ai_score: 85, status: 'applied' },
+  { id: 20, name: 'Ellie Williams', email: 'ellie@example.com', years_of_experience: 3, tech_stack: 'React Native, Redux, Node', cv_url: '/documents/mock-cv1.pdf', ai_score: 97, status: 'applied' },
+];
 
 export default function CVViewerPage() {
   const params = useParams()
