@@ -1,17 +1,27 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
+# Web Framework & Core
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
 python-multipart==0.0.6
-supabase==2.0.3
-openai
-langchain
-langchain-openai
-langchain-community
-pydantic
-pydantic-settings
-email-validator>=2.0.0
-python-dotenv==1.0.0
-PyPDF2
-PyMuPDF==1.23.26
+pydantic==1.10.13
+pydantic-settings==0.2.5
+email-validator==2.1.0.post1
+
+# Database & Environment
+supabase==2.3.7
+python-dotenv==1.0.1
 aiofiles==23.2.1
+
+# AI & RAG Stack (The most critical to pin)
+openai==1.12.0
+langchain==0.1.7
+langchain-openai==0.0.6
+langchain-community==0.0.20
+tiktoken==0.6.0
+
+# Document Processing
+PyPDF2==3.0.1
+PyMuPDF==1.23.26
+
+# Security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
