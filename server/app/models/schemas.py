@@ -108,3 +108,10 @@ class ChatMatchJobsRequest(BaseModel):
     message: str
     cv_text: Optional[str] = None
 
+
+class RecruiterInstructionRequest(BaseModel):
+    message: str
+    job_id: int
+    application_ids: Optional[List[int]] = None
+    current_application_id: Optional[int] = None
+

@@ -21,7 +21,9 @@ export default function LoginPage() {
 
     // STANDARD LOGIC (For other roles)
     if (role === 'recruiter') {
-      router.push('/recruiter/dashboard');
+
+
+      router.push('/recruiter');
     } else if (role === 'newhire') {
       router.push('/new-hire');
     } else {

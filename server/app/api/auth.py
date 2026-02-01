@@ -2,9 +2,33 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from app.database import get_db
 from app.models import schemas
 from supabase import Client
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+@router.post("/login")
+async def login(data: LoginRequest):
+    # THE HACKATHON ADMIN BYPASS
+    if data.username == "admin" and data.password == "admin":
+        return {
+            "access_token": "mock-admin-token-123",
+            "token_type": "bearer",
+            "user": {
+                "id": "admin-id",
+                "email": "admin@space42.com",
+                "role": "admin"
+            },
+            "redirect_url": "/recruiter"
+        }
+    
+    # If not admin, proceed to standard Supabase Auth
+    res = supabase.auth.sign_in_with_password({"email": data.username, "password": data.password})
+    raise HTTPException(status_code=401, detail="Invalid credentials")
 
 @router.post("/verify")
 async def verify_token(authorization: str = Header(None), db: Client = Depends(get_db)):
