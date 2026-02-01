@@ -277,4 +277,3 @@ async def get_suggested_questions(application_id: int, db: Client = Depends(get_
     questions = await suggest_interview_questions(job.get("title", ""), application.get("tech_stack", ""))
     
     return {"questions": questions}
-

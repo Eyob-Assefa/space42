@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from app.models import schemas
 from app.services.rag_service import chat_with_rag, ingest_handbook, query_handbook
-from app.services.ai_agent import match_jobs_with_cv
+from app.services.ai_agent import match_jobs_with_cv, handle_recruiter_instruction
 from app.database import get_db
 from supabase import Client
 
@@ -57,3 +57,15 @@ async def query_handbook_endpoint(query: str, k: int = 3):
     results = query_handbook(query, k=k)
     return {"query": query, "results": results}
 
+
+@router.post("/recruiter-instruction")
+async def recruiter_instruction(request: schemas.RecruiterInstructionRequest, db: Client = Depends(get_db)):
+    """Handle recruiter instructions: /filter, /rank, /email. Returns AI response and optionally filtered/ranked application IDs."""
+    result = await handle_recruiter_instruction(
+        message=request.message,
+        job_id=request.job_id,
+        application_ids=request.application_ids,
+        current_application_id=request.current_application_id,
+        db=db
+    )
+    return result

@@ -1,6 +1,6 @@
 from openai import OpenAI
 import os
-from typing import List, Dict
+from typing import List, Dict, Optional
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -124,6 +124,107 @@ async def generate_interview_email(candidate_name: str, job_title: str) -> str:
     except Exception as e:
         print(f"Error generating email: {e}")
         return f"Dear {candidate_name},\n\nWe would like to invite you for an interview for the {job_title} position.\n\nBest regards,\nSpace42 Team"
+
+
+async def handle_recruiter_instruction(
+    message: str,
+    job_id: int,
+    application_ids: Optional[List[int]],
+    current_application_id: Optional[int],
+    db
+) -> dict:
+    """Handle recruiter instructions: /filter, /rank, /email. Returns response and optionally filtered/ranked IDs."""
+    msg_lower = message.strip().lower()
+    
+    # Fetch applications
+    if application_ids:
+        response = db.table("applications").select("*").in_("id", application_ids).execute()
+    else:
+        response = db.table("applications").select("*").eq("job_id", job_id).execute()
+    
+    applications = response.data or []
+    
+    # Get job info
+    job_response = db.table("jobs").select("*").eq("id", job_id).execute()
+    job = job_response.data[0] if job_response.data else {}
+    job_title = job.get("title", "the position")
+    
+    # /filter - filter by skill/criteria
+    if msg_lower.startswith("/filter"):
+        criteria = message[7:].strip() or "general fit"
+        filtered = [
+            a for a in applications
+            if criteria.lower() in (a.get("tech_stack") or "").lower()
+            or criteria.lower() in (a.get("name") or "").lower()
+        ]
+        if not filtered and criteria.lower() != "general fit":
+            filtered = [a for a in applications if criteria.lower() in str(a).lower()]
+        response_text = f"Filtered to {len(filtered)} applicant(s) matching '{criteria}'."
+        return {
+            "response": response_text,
+            "application_ids": [a["id"] for a in filtered],
+            "instruction": "filter"
+        }
+    
+    # /rank - re-rank by experience, skills, or score
+    if msg_lower.startswith("/rank"):
+        by = message[5:].strip().lower() or "score"
+        if "experience" in by or "exp" in by:
+            sorted_apps = sorted(applications, key=lambda a: a.get("years_of_experience", 0), reverse=True)
+            response_text = f"Ranked {len(sorted_apps)} applicants by experience (highest first)."
+        elif "skill" in by or "tech" in by:
+            sorted_apps = sorted(applications, key=lambda a: len((a.get("tech_stack") or "").split(",")), reverse=True)
+            response_text = f"Ranked {len(sorted_apps)} applicants by tech stack breadth."
+        else:
+            sorted_apps = sorted(applications, key=lambda a: a.get("ai_score", 0), reverse=True)
+            response_text = f"Ranked {len(sorted_apps)} applicants by AI score."
+        return {
+            "response": response_text,
+            "application_ids": [a["id"] for a in sorted_apps],
+            "instruction": "rank"
+        }
+    
+    # /email - generate interview email for current applicant
+    if msg_lower.startswith("/email"):
+        if not current_application_id:
+            return {"response": "Please select an applicant first to generate an email.", "instruction": "email"}
+        app = next((a for a in applications if a["id"] == current_application_id), None)
+        if not app:
+            return {"response": "Applicant not found.", "instruction": "email"}
+        email_content = await generate_interview_email(app["name"], job_title)
+        return {
+            "response": f"Generated interview email for {app['name']}:\n\n{email_content}",
+            "email_content": email_content,
+            "instruction": "email"
+        }
+    
+    # Normal chat - AI responds helpfully
+    try:
+        apps_summary = "\n".join([
+            f"- {a.get('name')} (Score: {a.get('ai_score', 0):.1f}, Exp: {a.get('years_of_experience')}y, Tech: {a.get('tech_stack', 'N/A')})"
+            for a in applications[:10]
+        ]) if applications else "No applicants yet."
+        prompt = f"""You are a recruitment AI assistant for Space42. The recruiter is viewing applicants for job "{job_title}".
+        
+Current applicants ({len(applications)} total):
+{apps_summary}
+
+Recruiter message: {message}
+
+Respond helpfully. You can suggest using /filter, /rank, or /email for specific actions. Be concise."""
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful recruitment assistant. Be concise and actionable."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.6,
+            max_tokens=300
+        )
+        return {"response": response.choices[0].message.content, "instruction": None}
+    except Exception as e:
+        print(f"Error in recruiter chat: {e}")
+        return {"response": "I'm having trouble processing that. Try /filter, /rank, or /email for specific actions.", "instruction": None}
 
 
 async def suggest_interview_questions(job_title: str, tech_stack: str) -> List[str]:
