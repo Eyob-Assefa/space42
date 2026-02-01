@@ -53,7 +53,7 @@ export default function JobsPage() {
   const [cvStatus, setCvStatus] = useState('idle');
   const [isScanning, setIsScanning] = useState(false);
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = (e:any) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
