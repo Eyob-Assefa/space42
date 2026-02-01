@@ -2,9 +2,9 @@
 import Link from 'next/link';
 
 const JOB_DATA = [
-  { id: 'fin', role: "Finance", apps: 1293, status: "Critical", color: "border-blue-500" },
-  { id: 'tech', role: "Tech", apps: 8761, status: "Active", color: "border-cyan-400" },
-  { id: 'eng', role: "Engineer", apps: 2371, status: "Active", color: "border-indigo-500" },
+  { id: 1, role: "Finance", apps: 1293, status: "Critical", color: "border-blue-500" },
+  { id: 2, role: "Tech", apps: 8761, status: "Active", color: "border-cyan-400" },
+  { id: 3, role: "Engineer", apps: 2371, status: "Active", color: "border-indigo-500" },
 ];
 
 export default function RecruiterDashboard() {
@@ -54,7 +54,7 @@ export default function RecruiterDashboard() {
                 </div>
                 
                 <h3 className="text-3xl font-black text-white mb-1 uppercase tracking-tighter">{job.role}</h3>
-                <p className="text-gray-500 text-[10px] font-mono mb-10 tracking-widest">UID: {job.id.toUpperCase()}-09-ALPHA</p>
+                <p className="text-gray-500 text-[10px] font-mono mb-10 tracking-widest">UID: JOB-{job.id}-ALPHA</p>
 
                 <div className="space-y-6">
                   <div className="flex items-baseline gap-2">
@@ -63,10 +63,10 @@ export default function RecruiterDashboard() {
                   </div>
                   
                   <Link 
-                    href="/recruiter/screening"
+                    href={`/recruiter/cvs/${job.id}`}
                     className="block w-full text-center py-4 bg-transparent border-2 border-blue-400/60 rounded-xl text-blue-400 font-black text-xs uppercase tracking-[0.3em] hover:bg-blue-600 hover:text-white hover:border-blue-500 hover:shadow-[0_0_25px_rgba(59,130,246,0.6)] transition-all active:scale-95"
                   >
-                    Review CVs
+                    View CVs
                   </Link>
                 </div>
               </div>

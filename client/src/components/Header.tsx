@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation'
 export default function Header() {
   const pathname = usePathname()
   
-  // Hide header on login/recruiter pages as discussed
-  if (pathname === '/login' || pathname === '/recruiter') return null;
+  // Hide header on login and all recruiter pages (dashboard, CV viewer, etc.)
+  if (pathname === '/login' || pathname?.startsWith?.('/recruiter')) return null;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-[999] pointer-events-none">

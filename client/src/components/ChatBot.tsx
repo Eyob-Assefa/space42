@@ -10,7 +10,6 @@ interface Message {
   content: string
 }
 
-// Added status types for the Jobs page logic
 interface ChatBotProps {
   cvStatus?: 'idle' | 'uploading' | 'success' | 'no_fit' | 'missing_info'
 }
@@ -65,7 +64,7 @@ export default function ChatBot({ cvStatus = 'idle' }: ChatBotProps) {
 
     // Logic for the New Hire Portal
     if (pathname === '/new-hire') {
-      return "Welcome, new hire! I'm here to answer any questions about our company policies and onboarding documents. Ask me anything!"
+      return "I'm your onboarding assistant! I'm here to help you understand company information from the onboarding document. Ask me anything about policies, procedures, or what you've read—no need to contact HR."
     }
 
     // Default Home Greeting
@@ -98,6 +97,9 @@ export default function ChatBot({ cvStatus = 'idle' }: ChatBotProps) {
       setLoading(false)
     }
   }
+
+  // Hide global ChatBot on pages with built-in chatbot
+  if (pathname?.startsWith?.('/recruiter/cvs')) return null
 
   return (
     <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
