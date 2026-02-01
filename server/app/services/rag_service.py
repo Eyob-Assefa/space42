@@ -29,7 +29,7 @@ except ImportError:
     RecursiveCharacterTextSplitter = None
 
 # Path to handbook PDF
-HANDBOOK_PATH = Path(__file__).parent.parent.parent / "data" / "handbook.pdf"
+HANDBOOK_PATH = Path(__file__).parent.parent.parent / "data" / "space42-document.pdf"
 
 # Initialize embeddings and LLM
 embeddings = None
@@ -145,6 +145,13 @@ def ingest_handbook() -> Dict[str, Any]:
         loader = PyPDFLoader(str(HANDBOOK_PATH))
         documents = loader.load()
         
+        # Print first 200 characters to verify successful loading
+        if documents and len(documents) > 0:
+            first_doc_content = documents[0].page_content[:200] if documents[0].page_content else ""
+            print(f"[ingest_handbook] First 200 characters of document: {first_doc_content}")
+        else:
+            print("[ingest_handbook] WARNING: No documents loaded from PDF")
+        
         # Preserve page numbers in metadata
         # PyPDFLoader stores page number as "page" (0-indexed) in metadata
         for i, doc in enumerate(documents):
@@ -256,9 +263,21 @@ def query_handbook(query: str, k: int = 3) -> List[Dict[str, Any]]:
     words = re.sub(r'[^\w\s]', '', query).lower().split()
     search_terms = [w for w in words if w not in stop_words]
     
+    # Space42-specific keywords that are likely found in the document
+    space42_keywords = ['space42', 'platform', 'onboarding', 'policy', 'policies', 'recruitment', 'recruiter', 
+                        'candidate', 'application', 'job', 'jobs', 'interview', 'screening', 'cv', 'resume',
+                        'dashboard', 'workflow', 'process', 'procedure', 'guideline', 'guidelines', 'rule', 'rules',
+                        'benefit', 'benefits', 'leave', 'vacation', 'remote', 'work', 'employee', 'team', 'department']
+    
+    # If query contains Space42-specific keywords, prioritize them
+    query_lower = query.lower()
+    found_keywords = [kw for kw in space42_keywords if kw in query_lower]
+    if found_keywords:
+        search_terms = found_keywords + search_terms  # Prioritize Space42 keywords
+    
     # If no keywords remain, use the longest word from the original query
     if not search_terms:
-        search_terms = [max(words, key=len)] if words else ["mission"]
+        search_terms = [max(words, key=len)] if words else ["space42"]
 
     # We use the most "significant" word for the keyword search (usually the longest)
     primary_keyword = max(search_terms, key=len)
@@ -394,12 +413,12 @@ async def chat_with_rag(user_message: str) -> str:
         
         # FORCE ACCESS: Update system prompt to force AI to use context
         if context_block:
-            # System prompt that forces the AI to use the provided context
-            system_prompt = """You are the Space42 Platform Assistant. You MUST use the provided handbook context when necessary. If context is provided below, you DO have access to company data. Use it to answer! Do not say you don't have access - the context IS your access."""
+            # System prompt that forces the AI to use the provided Space42 document context
+            system_prompt = """You are the Space42 Platform Assistant. You MUST use the provided Space42 document context when answering questions. The context below comes from the official Space42 documentation. If context is provided, you DO have access to company data - use it to answer! Do not say you don't have access - the context IS your access. Rely only on the Space42 document context provided below."""
         else:
             # ERROR HANDLING: Fallback to general assistant mode
             print("[RAG] Falling back to general assistant mode (no handbook context)")
-            system_prompt = "You are the Space42 Platform Assistant. Help users with general platform tasks and questions. If asked about company policies, mention that the information isnot available right now, but you can help with other platform features."
+            system_prompt = "You are the Space42 Platform Assistant. Help users with general platform tasks and questions. If asked about company policies or Space42 documentation, mention that the Space42 document information is not available right now, but you can help with other platform features."
         
         # PROMPT ASSEMBLY: Combine context and user question
         # CHECK THE LOGIC: Ensure context is properly added to the message
