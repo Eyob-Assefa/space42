@@ -21,13 +21,9 @@ export default function LoginPage() {
 
     // STANDARD LOGIC (For other roles)
     if (role === 'recruiter') {
-<<<<<<< HEAD
       router.push('/recruiter/dashboard');
-=======
-      router.push('/recruiter');
     } else if (role === 'newhire') {
       router.push('/new-hire');
->>>>>>> 55dfe343f7d39f40a68bfd589909fc15d983e45d
     } else {
       router.push('/'); // admin
     }
