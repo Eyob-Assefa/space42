@@ -22,13 +22,36 @@ async def submit_application(
     db: Client = Depends(get_db)
 ):
     """Submit a job application with CV upload. Candidates can apply without signing in."""
+    # Validate and convert types to ensure they match database schema
+    # Ensure job_id is an integer (Form data might come as string)
+    try:
+        job_id_int = int(job_id) if not isinstance(job_id, int) else job_id
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid job_id: must be an integer")
+    
     # Verify job exists
-    job_response = db.table("jobs").select("*").eq("id", job_id).execute()
+    job_response = db.table("jobs").select("*").eq("id", job_id_int).execute()
     if not job_response.data:
         raise HTTPException(status_code=404, detail="Job not found")
     job = job_response.data[0]
     
-    # For anonymous applicants (no candidate_id), find or create a user record
+    # Validate candidate_id - must be a valid UUID string or None
+    # If candidate_id is provided but is empty/placeholder/invalid, treat as None
+    if candidate_id:
+        candidate_id = candidate_id.strip() if isinstance(candidate_id, str) else str(candidate_id).strip()
+        # Check if it's a valid UUID format
+        if not candidate_id or candidate_id.lower() in ['none', 'null', '']:
+            candidate_id = None
+        else:
+            # Validate UUID format
+            try:
+                uuid.UUID(candidate_id)  # This will raise ValueError if invalid
+            except (ValueError, AttributeError, TypeError):
+                # Invalid UUID format, treat as None
+                print(f"Warning: Invalid candidate_id format: {candidate_id}, treating as None")
+                candidate_id = None
+    
+    # For anonymous applicants (no valid candidate_id), find or create a user record
     if not candidate_id:
         user_response = db.table("users").select("*").eq("email", email).execute()
         if user_response.data:
@@ -70,17 +93,31 @@ async def submit_application(
     # Score with AI
     ai_score = await score_resume(cv_text or "", job.get("description") or "", "")
     
-    # Create application
+    # Validate and convert types to ensure they match database schema
+    # Ensure years_of_experience is an integer (Form data might come as string)
+    try:
+        years_int = int(years_of_experience) if not isinstance(years_of_experience, int) else years_of_experience
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid years_of_experience: must be an integer")
+    
+    # Ensure ai_score is a float
+    try:
+        ai_score_float = float(ai_score) if not isinstance(ai_score, float) else ai_score
+    except (ValueError, TypeError):
+        print(f"Warning: Invalid ai_score: {ai_score}, using default 50.0")
+        ai_score_float = 50.0
+    
+    # Create application with properly typed values
     application_data = {
-        "job_id": job_id,
-        "candidate_id": candidate_id,
+        "job_id": job_id_int,  # INT - already validated above
+        "candidate_id": candidate_id,  # Valid UUID string - already validated above
         "name": name,
         "email": email,
-        "years_of_experience": years_of_experience,
+        "years_of_experience": years_int,  # INT - validated above
         "tech_stack": tech_stack,
         "cv_url": cv_url,
-        "ai_score": ai_score,
-        "status": "applied"
+        "ai_score": ai_score_float,  # FLOAT - validated above
+        "status": "applied"  # Valid enum value (matches ApplicationStatus.APPLIED)
     }
     
     response = db.table("applications").insert(application_data).execute()
@@ -151,9 +188,15 @@ async def rescore_applicants(
         # Get CV text (would need to fetch from storage, simplified here)
         # For now, use existing score and adjust based on ideal candidate
         new_score = await score_resume("", job_description, request.ideal_candidate_description)
+        # Ensure ai_score is a float
+        try:
+            ai_score_float = float(new_score) if not isinstance(new_score, float) else new_score
+        except (ValueError, TypeError):
+            print(f"Warning: Invalid ai_score: {new_score}, using existing score")
+            ai_score_float = app.get("ai_score", 50.0)
         # Update score in database
-        db.table("applications").update({"ai_score": new_score}).eq("id", app["id"]).execute()
-        app["ai_score"] = new_score
+        db.table("applications").update({"ai_score": ai_score_float}).eq("id", app["id"]).execute()
+        app["ai_score"] = ai_score_float
     
     # Return sorted applications
     applications.sort(key=lambda x: x["ai_score"], reverse=True)
