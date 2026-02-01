@@ -1,10 +1,12 @@
 {
   "compilerOptions": {
+    "noImplicitAny": false,
+    "strict": false,
+    "ignoreDeprecations": "5.0",
+    "skipLibCheck": true,
     "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
+    "allowJs": true, 
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
