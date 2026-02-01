@@ -40,7 +40,7 @@ export default function ChatBot({ cvStatus = 'idle' }: ChatBotProps) {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // 2. NEW DYNAMIC GREETING LOGIC
+  // 2. DYNAMIC GREETING LOGIC UPDATED
   const getGreeting = () => {
     // Logic for the Opportunities/Jobs Page
     if (pathname === '/jobs') {
@@ -50,9 +50,10 @@ export default function ChatBot({ cvStatus = 'idle' }: ChatBotProps) {
         case 'no_fit':
           return "Ooops! it seems maybe you're an odd ball! I can't seem to find roles best fit for you."
         case 'success':
-          return "These are the most fitting job roles I found for you."
+          // THIS IS THE UPDATE YOU REQUESTED:
+          return "Oh, there you Go! Now you may find it easier to know where to apply."
         default:
-          return "Oh, you want to work at Space42? Nice Choice! Upload your CV and I will get you best fitted job roles for you!"
+          return "Oh, you want to work at Space42? Nice Choice! Upload your CV and I will calculate your percentage of compatibility with each job roles."
       }
     }
 
