@@ -3,10 +3,10 @@ import Link from 'next/link';
 
 const navigationCards = [
   {
-    title: "Explore Jobs",
+    title: "Currently Happening",
     subtitle: "COMMAND CENTER",
     description: "Search for open roles and launch your application into orbit.",
-    image: "/assets/jobs.png",
+    image: "/assets/current.jpeg",
     link: "/jobs"
   },
   {
@@ -20,7 +20,7 @@ const navigationCards = [
     title: "Life at Space42",
     subtitle: "STATION TOUR",
     description: "Experience our culture through an immersive virtual tour of the station.",
-    image: "/assets/tour.png",
+    image: "/assets/jobs.jpeg",
     link: "/tour"
   }
 ];
