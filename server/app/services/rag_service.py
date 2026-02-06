@@ -1,177 +1,71 @@
-"""
-RAG (Retrieval Augmented Generation) service for Space42 company chatbot.
-Uses LangChain with Supabase pgvector to load and query handbook data from PDF.
-"""
 import os
+import re
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Import LangChain components
+# --- IMPORTS ---
 try:
     from langchain_community.document_loaders import PyPDFLoader
     from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-    from langchain.text_splitter import RecursiveCharacterTextSplitter
-    from langchain_community.vectorstores import SupabaseVectorStore
-    from langchain.chains import RetrievalQA
-    from langchain.prompts import PromptTemplate
-    from langchain.schema import Document
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from langchain_core.messages import HumanMessage, SystemMessage
     LANGCHAIN_AVAILABLE = True
-except ImportError:
+    print("[RAG Init] LangChain libraries loaded successfully.")
+except ImportError as e:
     LANGCHAIN_AVAILABLE = False
-    Document = None
-    PyPDFLoader = None
-    SupabaseVectorStore = None
-    RetrievalQA = None
-    PromptTemplate = None
-    RecursiveCharacterTextSplitter = None
+    print(f"[RAG Init] ERROR: LangChain dependencies missing: {e}")
 
-# Path to handbook PDF
 HANDBOOK_PATH = Path(__file__).parent.parent.parent / "data" / "space42-document.pdf"
 
-# Initialize embeddings and LLM
-embeddings = None
-llm = None
-if LANGCHAIN_AVAILABLE:
-    try:
-        openai_api_key = os.getenv("OPENAI_API_KEY")
-        if openai_api_key:
-            # Use text-embedding-3-small to match the embedding model used during ingestion
-            # This ensures vector search returns relevant results
-            # IMPORTANT: Must use model="text-embedding-3-small" for 1536 dimensions
-            embeddings = OpenAIEmbeddings(
-                openai_api_key=openai_api_key,
-                model="text-embedding-3-small"  # 1536 dimensions - matches handbook_documents table
-            )
-            print(f"[RAG Service] Initialized OpenAIEmbeddings with model: {embeddings.model}")
-            llm = ChatOpenAI(
-                model="gpt-3.5-turbo",
-                temperature=0.7,
-                openai_api_key=openai_api_key
-            )
-        else:
-            print("[RAG Service] WARNING: OPENAI_API_KEY not found in environment")
-    except Exception as e:
-        print(f"[RAG Service] Error initializing OpenAI: {e}")
-        embeddings = None
-        llm = None
-
-
 def _get_supabase_client():
-    """Get Supabase client from database module - ensures same client is used everywhere."""
     from app.database import get_db
     return get_db()
 
-
-def _insert_handbook_document(supabase_client, content: str, metadata: dict, embedding: list):
+async def _extract_keywords_with_llm(query: str) -> str:
     """
-    Insert a single handbook document with proper VECTOR type handling.
-    Tries multiple methods to ensure compatibility with Supabase pgvector.
+    Uses LLM to extract robust search keywords from the user query.
+    Handles misspellings and removes filler words.
     """
-    # Convert embedding to list format
-    if hasattr(embedding, 'tolist'):
-        embedding_list = embedding.tolist()
-    else:
-        embedding_list = list(embedding)
+    if not query:
+        return ""
+        
+    # 1. Trim to 50 words to control token usage
+    trimmed_query = " ".join(query.split()[:50])
     
-    # Format as string for pgvector: '[0.1,0.2,...]'
-    embedding_str = '[' + ','.join(map(str, embedding_list)) + ']'
-    
-    # Method 1: Try using RPC function if it exists
     try:
-        response = supabase_client.rpc(
-            'insert_handbook_document',
-            {
-                'p_content': content,
-                'p_metadata': metadata,
-                'p_embedding': embedding_str
-            }
-        ).execute()
-        return True
-    except Exception as rpc_error:
-        # Method 2: Try direct insert with string format
-        try:
-            response = supabase_client.table("handbook_documents").insert({
-                "content": content,
-                "metadata": metadata,
-                "embedding": embedding_str
-            }).execute()
-            return True
-        except Exception as str_error:
-            # Method 3: Try with Python list (some Supabase versions accept this)
-            try:
-                response = supabase_client.table("handbook_documents").insert({
-                    "content": content,
-                    "metadata": metadata,
-                    "embedding": embedding_list
-                }).execute()
-                return True
-            except Exception as list_error:
-                # All methods failed
-                error_msg = f"RPC: {rpc_error}, String: {str_error}, List: {list_error}"
-                raise Exception(f"All insertion methods failed: {error_msg}")
-
+        llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+        
+        # Prompt designed to extract core search terms
+        messages = [
+            SystemMessage(content="You are a search query optimizer. Extract the most important subject nouns or specific business terms from the user's question. Fix any misspellings, and it should be a meaningful word. Return ONLY the keywords separated by spaces. Do not add labels."),
+            HumanMessage(content=f"Question: {trimmed_query}")
+        ]
+        
+        response = await llm.ainvoke(messages)
+        keywords = response.content.strip()
+        print(f"[Keyword Extractor] Input: '{trimmed_query}' -> Keywords: '{keywords}'")
+        return keywords
+    except Exception as e:
+        print(f"[Keyword Extractor] Failed: {e}")
+        # Fallback to naive splitting if LLM fails
+        return trimmed_query
 
 def ingest_handbook() -> Dict[str, Any]:
-    """
-    Process handbook.pdf and store chunks in Supabase 'handbook_documents' table.
-    
-    Returns:
-        Dict with status and information about the ingestion process
-    """
+    """Process handbook.pdf and store chunks in Supabase."""
     if not LANGCHAIN_AVAILABLE:
-        return {
-            "success": False,
-            "error": "LangChain dependencies not available"
-        }
+        return {"success": False, "error": "LangChain dependencies not available"}
     
     if not HANDBOOK_PATH.exists():
-        return {
-            "success": False,
-            "error": f"Handbook PDF not found at {HANDBOOK_PATH}"
-        }
-    
-    if embeddings is None:
-        return {
-            "success": False,
-            "error": "OpenAI embeddings not initialized. Check OPENAI_API_KEY in .env"
-        }
+        return {"success": False, "error": f"PDF not found at {HANDBOOK_PATH}"}
     
     try:
-        # Load PDF
-        print(f"Loading PDF from {HANDBOOK_PATH}")
+        print(f"[Ingest] Loading PDF from {HANDBOOK_PATH}")
         loader = PyPDFLoader(str(HANDBOOK_PATH))
         documents = loader.load()
         
-        # Print first 200 characters to verify successful loading
-        if documents and len(documents) > 0:
-            first_doc_content = documents[0].page_content[:200] if documents[0].page_content else ""
-            print(f"[ingest_handbook] First 200 characters of document: {first_doc_content}")
-        else:
-            print("[ingest_handbook] WARNING: No documents loaded from PDF")
-        
-        # Preserve page numbers in metadata
-        # PyPDFLoader stores page number as "page" (0-indexed) in metadata
-        for i, doc in enumerate(documents):
-            # Ensure page_number is always set (1-indexed for user-friendly display)
-            if "page" in doc.metadata:
-                page_num = doc.metadata["page"]
-                # Handle both int and other types
-                if isinstance(page_num, int):
-                    doc.metadata["page_number"] = page_num + 1
-                else:
-                    doc.metadata["page_number"] = i + 1
-            else:
-                # Fallback: use index (documents are loaded in page order)
-                doc.metadata["page_number"] = i + 1
-            # Also keep the original page for reference
-            if "page" not in doc.metadata:
-                doc.metadata["page"] = i
-        
-        # Split documents into chunks
-        # RecursiveCharacterTextSplitter preserves metadata by default
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
             chunk_overlap=200,
@@ -179,307 +73,175 @@ def ingest_handbook() -> Dict[str, Any]:
         )
         chunks = text_splitter.split_documents(documents)
         
-        # Ensure all chunks have page_number in metadata
-        for chunk in chunks:
-            if "page_number" not in chunk.metadata:
-                # Try to get from page field
-                if "page" in chunk.metadata:
-                    page_num = chunk.metadata["page"]
-                    if isinstance(page_num, int):
-                        chunk.metadata["page_number"] = page_num + 1
-                    else:
-                        chunk.metadata["page_number"] = 1
-                else:
-                    chunk.metadata["page_number"] = 1  # Default fallback
-        
-        print(f"Created {len(chunks)} chunks from {len(documents)} pages")
-        
-        # Get Supabase client
-        supabase_client = _get_supabase_client()
-        
-        # Generate embeddings for all chunks
-        print("Generating embeddings...")
+        embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")
+        print("[Ingest] Generating embeddings...")
         texts = [chunk.page_content for chunk in chunks]
-        chunk_embeddings = embeddings.embed_documents(texts)
+        embeddings = embeddings_model.embed_documents(texts)
         
-        # Insert documents directly into Supabase to match custom schema
-        # Use raw SQL via RPC to properly handle VECTOR type
-        print("Inserting documents into Supabase...")
-        total_inserted = 0
+        supabase = _get_supabase_client()
+        batch_data = []
         
-        # Insert in batches to avoid overwhelming the database
-        batch_size = 50
-        for i in range(0, len(chunks), batch_size):
-            batch_chunks = chunks[i:i + batch_size]
-            batch_embeddings = chunk_embeddings[i:i + batch_size]
+        for i, (chunk, vector) in enumerate(zip(chunks, embeddings)):
+            page = chunk.metadata.get("page", 0)
+            if isinstance(page, int): page += 1
             
-            for chunk, embedding in zip(batch_chunks, batch_embeddings):
-                try:
-                    _insert_handbook_document(
-                        supabase_client,
-                        chunk.page_content,
-                        chunk.metadata,
-                        embedding
-                    )
-                    total_inserted += 1
-                except Exception as e:
-                    print(f"Error inserting document {total_inserted + 1}: {e}")
-                    continue
-            
-            print(f"Inserted batch {i//batch_size + 1}: {min(batch_size, len(chunks) - i)} documents")
-        
-        return {
-            "success": True,
-            "chunks_created": len(chunks),
-            "chunks_inserted": total_inserted,
-            "pages_processed": len(documents),
-            "message": f"Successfully ingested {total_inserted} of {len(chunks)} chunks from {len(documents)} pages"
-        }
+            batch_data.append({
+                "content": chunk.page_content,
+                "metadata": {"page_number": page, "source": "handbook"},
+                "embedding": vector
+            })
+
+            if len(batch_data) >= 50 or i == len(chunks) - 1:
+                supabase.table("handbook_documents").insert(batch_data).execute()
+                print(f"[Ingest] Inserted batch ending at index {i}")
+                batch_data = []
+
+        return {"success": True, "chunks_inserted": len(chunks)}
     
     except Exception as e:
-        print(f"Error ingesting handbook: {e}")
-        import traceback
-        traceback.print_exc()
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        print(f"[Ingest] Critical Error: {e}")
+        return {"success": False, "error": str(e)}
 
-
-def query_handbook(query: str, k: int = 3) -> List[Dict[str, Any]]:
+async def query_handbook(query: str, k: int = 4) -> List[Dict[str, Any]]:
     """
-    Enhanced search: Extracts core keywords, tries keyword search first,
-    then falls back to vector search.
+    Hybrid Search with AI Keyword Extraction.
     """
-    import re
-    from app.database import get_db
-    
-    supabase_client = get_db()
-    table_name = "handbook_documents"
-    
-    # 1. CLEANING & KEYWORD EXTRACTION
-    # Removes "what is our", "tell me about", etc.
-    stop_words = {'what', 'is', 'our', 'the', 'a', 'an', 'are', 'we', 'how', 'do', 'does', 'tell', 'me', 'about', 'companys', 'company'}
-    words = re.sub(r'[^\w\s]', '', query).lower().split()
-    search_terms = [w for w in words if w not in stop_words]
-    
-    # Space42-specific keywords that are likely found in the document
-    space42_keywords = ['space42', 'platform', 'onboarding', 'policy', 'policies', 'recruitment', 'recruiter', 
-                        'candidate', 'application', 'job', 'jobs', 'interview', 'screening', 'cv', 'resume',
-                        'dashboard', 'workflow', 'process', 'procedure', 'guideline', 'guidelines', 'rule', 'rules',
-                        'benefit', 'benefits', 'leave', 'vacation', 'remote', 'work', 'employee', 'team', 'department']
-    
-    # If query contains Space42-specific keywords, prioritize them
-    query_lower = query.lower()
-    found_keywords = [kw for kw in space42_keywords if kw in query_lower]
-    if found_keywords:
-        search_terms = found_keywords + search_terms  # Prioritize Space42 keywords
-    
-    # If no keywords remain, use the longest word from the original query
-    if not search_terms:
-        search_terms = [max(words, key=len)] if words else ["space42"]
-
-    # We use the most "significant" word for the keyword search (usually the longest)
-    primary_keyword = max(search_terms, key=len)
-    print(f"[query_handbook] Targeting primary keyword: '{primary_keyword}'")
-
+    if not LANGCHAIN_AVAILABLE:
+        return []
+        
+    client = _get_supabase_client()
     results = []
-
-    # 2. STEP 1: KEYWORD SEARCH (Most Reliable)
+    
+    # --- STRATEGY 1: AI KEYWORD SEARCH ---
+    # We await the LLM to get clean, robust keywords
     try:
-        keyword_res = supabase_client.table(table_name) \
-            .select("id, content, metadata") \
-            .ilike("content", f"%{primary_keyword}%") \
-            .limit(k) \
-            .execute()
+        keywords_str = await _extract_keywords_with_llm(query)
+        # Split into individual terms (e.g., "remote work policy" -> ["remote", "work", "policy"])
+        # We search for the most significant term to keep it broad enough
+        search_terms = keywords_str.split()
         
-        if keyword_res.data:
-            print(f"[query_handbook] Found {len(keyword_res.data)} results via keyword search.")
-            for row in keyword_res.data:
-                results.append({
-                    'content': row.get('content', ''),
-                    'metadata': row.get('metadata', {}),
-                    'similarity': 0.9  # High score for direct keyword match
-                })
-            return _format_rag_results(results)
+        if search_terms:
+            # We construct an 'OR' query for the top keywords
+            # For simplicity, we search for the first 1-2 strongest terms combined or individually
+            primary_term = search_terms[0] 
+            
+            print(f"[Query] Database keyword search for: '{primary_term}'")
+            
+            kw_response = client.table("handbook_documents")\
+                .select("content, metadata")\
+                .ilike("content", f"%{primary_term}%")\
+                .limit(k)\
+                .execute()
+                
+            if kw_response.data:
+                print(f"[Query] Keyword search found {len(kw_response.data)} matches.")
+                for item in kw_response.data:
+                    results.append({
+                        "content": item.get('content', ''),
+                        "page_number": item.get('metadata', {}).get('page_number', 'N/A'),
+                        "score": 0.90, # High confidence for direct keyword hits
+                        "method": f"keyword: {primary_term}"
+                    })
     except Exception as e:
-        print(f"[query_handbook] Keyword search failed: {e}")
+        print(f"[Query] Keyword search step failed: {e}")
 
-    # 3. STEP 2: VECTOR SEARCH FALLBACK
-    print(f"[query_handbook] Keyword search failed or returned 0. Falling back to Vectors.")
+    # --- STRATEGY 2: VECTOR SEARCH ---
     try:
-        query_embedding = embeddings.embed_query(query)
-        rpc_res = supabase_client.rpc(
-            'match_handbook',
-            {
-                'query_embedding': query_embedding,
-                'match_threshold': 0.2, # Low threshold for safety
-                'match_count': k
-            }
-        ).execute()
-
-        if rpc_res.data:
-            print(f"[query_handbook] Found {len(rpc_res.data)} results via Vector RPC.")
-            return _format_rag_results(rpc_res.data)
+        embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")
+        query_vector = embeddings_model.embed_query(query)
+        
+        params = {
+            'query_embedding': query_vector,
+            'match_threshold': 0.25, 
+            'match_count': k
+        }
+        
+        vec_response = client.rpc('match_handbook', params).execute()
+        
+        if vec_response.data:
+            print(f"[Query] Vector search found {len(vec_response.data)} matches.")
+            for item in vec_response.data:
+                # Deduplicate based on content content
+                if not any(r['content'][:50] == item.get('content', '')[:50] for r in results):
+                    results.append({
+                        "content": item.get('content', ''),
+                        "page_number": item.get('metadata', {}).get('page_number', 'N/A'),
+                        "score": item.get('similarity', 0.0),
+                        "method": "vector"
+                    })
+        
     except Exception as e:
-        print(f"[query_handbook] Vector search failed: {e}")
+        print(f"[Query] Vector search failed: {e}")
 
-    return []
-
-def _format_rag_results(rows: list) -> list:
-    """Helper to standardize results for the Chatbot."""
-    formatted = []
-    for row in rows:
-        metadata = row.get('metadata', {})
-        formatted.append({
-            "content": row.get('content', ''),
-            "page_number": metadata.get("page_number", 1),
-            "score": float(row.get('similarity', 0.0))
-        })
-    return formatted
-
+    return results[:k]
 
 async def chat_with_rag(user_message: str) -> str:
-    """
-    Answer user questions using RAG (Retrieval Augmented Generation).
-    Uses handbook data from Supabase to provide accurate answers with page citations.
+    """Answer user questions using RAG."""
     
-    Flow:
-    1. Query handbook_documents vector store using user's message
-    2. Retrieve top 1-3 relevant chunks
-    3. Format context and inject into system prompt
-    4. Send to LLM with updated system prompt
-    """
+    # 1. Greeting Check
+    greetings = ["hello", "hi", "hey", "greetings"]
+    if user_message.lower().strip() in greetings:
+        return "Hello! I am the Space42 Handbook Assistant. How can I help you with our company policies?"
+
+    if not LANGCHAIN_AVAILABLE:
+        from app.services.ai_agent import chat_with_ai
+        return await chat_with_ai(user_message)
+
     try:
-        # Check if langchain is available
-        if not LANGCHAIN_AVAILABLE or llm is None or embeddings is None:
-            # Fallback to simple OpenAI chat
-            from openai import OpenAI
-            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are the Space42 Platform Assistant. You help users with general platform tasks and questions."},
-                    {"role": "user", "content": user_message}
-                ],
-                temperature=0.7,
-                max_tokens=500
-            )
-            return response.choices[0].message.content
+        # 2. Retrieve Context (Now strictly async because of the keyword extractor)
+        print(f"[RAG] Processing: {user_message}")
+        relevant_chunks = await query_handbook(user_message, k=4)
         
-        # RETRIEVAL STEP: Query handbook_documents vector store
-        print(f"[RAG] Querying handbook for: {user_message}")
-        relevant_chunks = query_handbook(user_message, k=3)
+        # 3. Fallback
+        if not relevant_chunks:
+            print("[RAG] No context found. Switching to general chat.")
+            from app.services.ai_agent import chat_with_ai
+            return await chat_with_ai(user_message)
+
+        # 4. Build Context
+        context_parts = []
+        pages = set()
+        for chunk in relevant_chunks:
+            content = chunk['content']
+            page = str(chunk['page_number'])
+            method = chunk.get('method', 'vector')
+            context_parts.append(f"[Page {page} | via {method}] {content}")
+            pages.add(page)
         
-        # PRINT THE CONTEXT: Log what query_handbook returns
-        print(f"[RAG] query_handbook returned {len(relevant_chunks)} chunks")
-        if relevant_chunks:
-            for i, chunk in enumerate(relevant_chunks):
-                print(f"[RAG] Chunk {i+1}: Page {chunk.get('page_number', 'N/A')}, Score: {chunk.get('score', 'N/A')}, Content preview: {chunk.get('content', '')[:100]}...")
-        else:
-            print("[RAG] WARNING: query_handbook returned empty list - no chunks found!")
+        context_block = "\n\n---\n\n".join(context_parts)
         
-        # CONTEXT INJECTION: Format top 1-3 relevant chunks
-        context_block = ""
-        page_numbers = set()
+        # 5. Generate Answer
+        system_prompt = """You are the Space42 Handbook Assistant. 
+        Answer using ONLY the provided context. 
+        Cite page numbers if available.
+        """
         
-        if relevant_chunks:
-            # Take top 1-3 chunks (already sorted by relevance)
-            top_chunks = relevant_chunks[:3]
-            context_parts = []
-            
-            for chunk in top_chunks:
-                content = chunk.get("content", "")
-                if content:  # Only add non-empty content
-                    context_parts.append(content)
-                    page_num = chunk.get("page_number", 0)
-                    if page_num:
-                        page_numbers.add(page_num)
-            
-            # CHECK THE LOGIC: Ensure results are joined into a single string
-            if context_parts:
-                # Format as "CONTEXT FROM HANDBOOK" block
-                context_block = "CONTEXT FROM HANDBOOK:\n" + "\n\n".join(context_parts)
-                pages_str = ", ".join(sorted([str(p) for p in page_numbers])) if page_numbers else ""
-                print(f"[RAG] Context block created: {len(context_block)} characters, Pages: {pages_str}")
-            else:
-                print("[RAG] WARNING: All chunks had empty content!")
-                context_block = ""
-                pages_str = ""
-        else:
-            # No relevant chunks found - will use fallback mode
-            print("[RAG] No relevant handbook chunks found for query")
-            pages_str = ""
+        user_prompt_content = f"""
+        CONTEXT:
+        {context_block}
         
-        # FORCE ACCESS: Update system prompt to force AI to use context
-        if context_block:
-            # System prompt that forces the AI to use the provided Space42 document context
-            system_prompt = """You are the Space42 Platform Assistant. You MUST use the provided Space42 document context when answering questions. The context below comes from the official Space42 documentation. If context is provided, you DO have access to company data - use it to answer! Do not say you don't have access - the context IS your access. Rely only on the Space42 document context provided below."""
-        else:
-            # ERROR HANDLING: Fallback to general assistant mode
-            print("[RAG] Falling back to general assistant mode (no handbook context)")
-            system_prompt = "You are the Space42 Platform Assistant. Help users with general platform tasks and questions. If asked about company policies or Space42 documentation, mention that the Space42 document information is not available right now, but you can help with other platform features."
+        QUESTION: 
+        {user_message}
+        """
         
-        # PROMPT ASSEMBLY: Combine context and user question
-        # CHECK THE LOGIC: Ensure context is properly added to the message
-        if context_block:
-            # Use handbook context - format it clearly
-            user_prompt = f"{context_block}\n\n---\n\nQuestion: {user_message}"
-            
-            # Add page citation instruction if we have pages
-            if pages_str:
-                user_prompt += f"\n\n(Reference: Handbook pages {pages_str})"
-            
-            print(f"[RAG] User prompt length: {len(user_prompt)} characters")
-            print(f"[RAG] Context included in prompt: {len(context_block)} characters")
-        else:
-            user_prompt = user_message
-            print(f"[RAG] No context block - using user message only: {len(user_prompt)} characters")
-        
-        # Send to ChatOpenAI model
-        # LangChain ChatOpenAI accepts messages as a list of message objects or a string
-        # Format: Use HumanMessage and SystemMessage from langchain.schema
-        from langchain.schema import HumanMessage, SystemMessage
-        
-        # CHECK THE LOGIC: Ensure both SystemMessage and HumanMessage contain the right content
+        llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.3)
         messages = [
             SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt)
+            HumanMessage(content=user_prompt_content)
         ]
         
-        print(f"[RAG] System prompt: {system_prompt[:100]}...")
-        print(f"[RAG] User prompt preview: {user_prompt[:200]}...")
-        print(f"[RAG] Sending {len(messages)} messages to LLM")
+        response = await llm.ainvoke(messages)
+        answer = response.content
         
-        response = llm.invoke(messages)
-        answer = response.content if hasattr(response, 'content') else str(response)
-        
-        print(f"[RAG] LLM response received: {len(answer)} characters")
-        
-        # Ensure page numbers are mentioned if we have context
-        if pages_str and context_block and pages_str not in answer:
-            answer += f" (Source: Handbook pages {pages_str})"
-        
+        if pages and "page" not in answer.lower():
+            page_list = ", ".join(sorted(list(pages)))
+            answer += f"\n\n(Source: Handbook Pages {page_list})"
+            
         return answer
     
     except Exception as e:
-        print(f"Error in RAG chat: {e}")
+        print(f"[RAG] Chat Error: {e}")
         import traceback
         traceback.print_exc()
-        # ERROR HANDLING: Graceful fallback
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are the Space42 Platform Assistant. Help users with general questions."},
-                    {"role": "user", "content": user_message}
-                ],
-                temperature=0.7,
-                max_tokens=500
-            )
-            return response.choices[0].message.content
-        except Exception as fallback_error:
-            print(f"Fallback also failed: {fallback_error}")
-            return "I'm having trouble connecting right now. Please try again later."
+        from app.services.ai_agent import chat_with_ai
+        return await chat_with_ai(user_message)
