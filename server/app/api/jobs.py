@@ -41,21 +41,18 @@ async def create_job(job: schemas.JobCreate, recruiter_id: str, db: Client = Dep
     return schemas.JobResponse(**response.data[0])
 
 
-@router.get("/{job_id}/applicants")
+@router.get("/{job_id}/applicants", response_model=List[schemas.ApplicationResponse])
 async def get_job_applicants(job_id: int, db: Client = Depends(get_db)):
-    """Get all applicants for a job with counts."""
-    job_response = db.table("jobs").select("*").eq("id", job_id).execute()
+    """Get all applicants for a job."""
+    # 1. Verify job exists
+    job_response = db.table("jobs").select("id").eq("id", job_id).execute()
     if not job_response.data:
         raise HTTPException(status_code=404, detail="Job not found")
     
-    job = job_response.data[0]
+    # 2. Get applications
     applications_response = db.table("applications").select("*").eq("job_id", job_id).execute()
     applications = applications_response.data if applications_response.data else []
     
-    return {
-        "job_id": job_id,
-        "job_title": job["title"],
-        "applicant_count": len(applications),
-        "applications": [schemas.ApplicationResponse(**app) for app in applications]
-    }
+    # 3. Return the LIST directly (Fixes the frontend mismatch)
+    return [schemas.ApplicationResponse(**app) for app in applications]
 
