@@ -1,27 +1,31 @@
 # Web Framework & Core
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-python-multipart==0.0.6
-pydantic==1.10.13
-pydantic-settings==0.2.5
-email-validator==2.1.0.post1
+fastapi>=0.109.0,<0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+email-validator>=2.1.0
+
+# Pydantic V2 Stack
+pydantic>=2.6.0
+pydantic-settings>=2.1.0
 
 # Database & Environment
-supabase==2.3.7
-python-dotenv==1.0.1
-aiofiles==23.2.1
+supabase>=2.3.0
+python-dotenv>=1.0.0
+aiofiles>=23.2.0
 
-# AI & RAG Stack (The most critical to pin)
-openai==1.12.0
-langchain==0.1.7
-langchain-openai==0.0.6
-langchain-community==0.0.20
-tiktoken==0.6.0
+# AI & RAG Stack
+openai>=1.12.0
+langchain>=0.1.7
+langchain-openai>=0.0.6
+langchain-community>=0.0.20
+tiktoken>=0.6.0
+langchain-core>=0.1.0
+langchain-text-splitters>=0.0.1
 
 # Document Processing
-PyPDF2==3.0.1
-PyMuPDF==1.23.26
+PyPDF2>=3.0.0
+PyMuPDF>=1.23.0
 
 # Security
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
