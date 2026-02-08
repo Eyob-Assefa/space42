@@ -2,7 +2,7 @@
 
 A scalable user landing page and recruitment dashboard that use AI for screening candidates, semantic search, and automating recruiter tasks. The platform connects a Next.js frontend with a Python/FastAPI backend to provide real-time RAG features and AI-based candidate scoring.
 
-## 🚀 Key Features
+## Key Features
 
 ### Intelligent Recruitment
 
@@ -14,8 +14,9 @@ A scalable user landing page and recruitment dashboard that use AI for screening
 * **RAG-Powered Chatbot:** Context-aware assistant capable of answering policy and culture questions using internal company handbooks.
 * **Application Portal:** Streamlined flow for profile creation, CV uploads, and job tracking.
 
-## 🛠 Tech Stack
+## Tech Stack
 
 * **Frontend:** Next.js 14, TypeScript, Tailwind CSS
 * **Backend:** FastAPI, LangChain, OpenAI
 * **Database:** Supabase 
+
